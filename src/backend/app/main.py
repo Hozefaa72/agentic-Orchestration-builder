@@ -67,11 +67,5 @@ app.include_router(assistant_router, tags=["Assistant"])
 
 
 def main():
-<<<<<<< Updated upstream
      uvicorn.run("backend.app.main:app", host="0.0.0.0", port=8001, reload=True)
 
-=======
-    uvicorn.run("backend.app.main:app", host="127.0.0.1", port=8000, reload=True)
-# def main():
-#     uvicorn.run("backend.app.main:app", host="0.0.0.0", port=8000, reload=True)
->>>>>>> Stashed changes
