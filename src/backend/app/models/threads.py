@@ -1,5 +1,5 @@
 from beanie import Document
-from datetime import datetime
+from datetime import datetime,timezone
 from pydantic import BaseModel, Field
 from typing import Optional
 
@@ -17,7 +17,7 @@ class Cache(BaseModel):
 
 
 class Thread(Document):
-    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    timestamp: datetime = Field(default_factory=datetime.now(timezone.utc))
     thread_name: Optional[str] = None
     user_id: str
     location: Optional[str] = ""

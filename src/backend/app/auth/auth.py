@@ -1,7 +1,8 @@
-from fastapi import HTTPException, Depends
+from fastapi import HTTPException, Depends, status
 from fastapi.security import APIKeyHeader
-from backend.app.modules.jwt_handler import decode_jwt
+from backend.app.auth.jwt_handler import decode_jwt
 from typing import Optional
+from jwt import PyJWTError
 
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=False)
@@ -32,15 +33,32 @@ def extract_token_from_header(auth_header: str) -> str:
 
 
 async def get_current_user(authorization: Optional[str] = Depends(api_key_header)):
-    print("authorization printing")
+    try:
+        if not authorization:
+            raise HTTPException(status_code=401, detail="Authorization header missing")
 
-    if not authorization:
-        raise HTTPException(status_code=401, detail="Authorization header missing")
+        token = extract_token_from_header(authorization)
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid or malformed token in header",
+            )
+        decoded_token = decode_jwt(token)
 
-    token = extract_token_from_header(authorization)
-    decoded_token = decode_jwt(token)
+        if not decoded_token:
+            raise HTTPException(status_code=401, detail="Token expired or invalid")
 
-    if not decoded_token:
-        raise HTTPException(status_code=401, detail="Token expired or invalid")
+        return decoded_token
+    except PyJWTError as jwt_err:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Failed to decode token"
+        )
 
-    return decoded_token
+    except HTTPException as http_exc:
+        raise http_exc
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Internal authentication error",
+        )

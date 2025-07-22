@@ -18,9 +18,11 @@ bcrypt = "^4.3.0"
 passlib = {extras = ["bcrypt"], version = "^1.7.4"}
 pyjwt = "^2.10.1"
 redis = {extras = ["async"], version = "^5.2.1"}
-openai = "^1.72.0"
+openai = "1.74.0"
 kafka-python = "^2.1.5"
 aiohttp = "^3.11.18"
+chromadb = "0.4.24"
+numpy = "1.26.4"
 
 [tool.poetry.scripts]
 dev = "src.backend.app.main:main"

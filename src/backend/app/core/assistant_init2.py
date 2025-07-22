@@ -3,33 +3,45 @@ import os
 import asyncio
 import aiohttp
 
-relative_path1 = ".//src//backend//app//datasets//ivf_clinic.json"
-relative_path2 = ".//src//backend//app//datasets//faq.json"
-relative_path3 = ".//src//backend//app//datasets//need.json"
-absolute_path = os.path.abspath(relative_path1)
-with open(absolute_path, "r") as f:
-    dataset = json.load(f)
-absolute_path2 = os.path.abspath(relative_path2)
-with open(absolute_path2, "r") as fi:
-    dataset2 = json.load(fi)
+# relative_path1 = ".//src//backend//app//datasets//ivf_clinic.json"
+# relative_path2 = ".//src//backend//app//datasets//faq.json"
+# relative_path3 = ".//src//backend//app//datasets//need.json"
+# absolute_path = os.path.abspath(relative_path1)
+# with open(absolute_path, "r") as f:
+#     dataset = json.load(f)
+# absolute_path2 = os.path.abspath(relative_path2)
+# with open(absolute_path2, "r") as fi:
+#     dataset2 = json.load(fi)
 
-absolute_path3 = os.path.abspath(relative_path3)
-with open(absolute_path3, "r", encoding="utf-8") as fii:
-    dataset3 = json.load(fii)
+# absolute_path3 = os.path.abspath(relative_path3)
+# with open(absolute_path3, "r", encoding="utf-8") as fii:
+#     dataset3 = json.load(fii)
 
-centers = json.dumps(dataset)
-faq = json.dumps(dataset2)
-need = json.dumps(dataset3)
+# centers = json.dumps(dataset)
+# faq = json.dumps(dataset2)
+# need = json.dumps(dataset3)
 
 
 class IVFChatbot:
-    def __init__(self, client):
+    def __init__(self, client, faq_file_id, center_file_id, need_file_id):
         self.assistant = None
         self.instructions = ""
         self.client = client
         self.thread = None
+        self.file_ids = [faq_file_id, center_file_id, need_file_id]
 
     async def initialize_assistant(self):
+        upload_paths = [
+                ".//src//backend//app//datasets//faq.json",
+                ".//src//backend//app//datasets//ivf_clinic.json",
+                ".//src//backend//app//datasets//need.json"
+            ]
+
+        upload_tasks = [
+                self.client.files.create(file=open(path, "rb"), purpose="assistants")
+                for path in upload_paths
+            ]
+        uploaded_files = await asyncio.gather(*upload_tasks)
         self.instructions = f"""Objective:
 - You are IndiraBot, an AI assistant representing Indira IVF, a leading fertility clinic.
 - You are engaging with potential clients through chat to answer FAQs, provide information about nearby Indira IVF centers, and help them understand potential treatment options based on their inputs and the dataset provided.
@@ -39,11 +51,11 @@ class IVFChatbot:
 
 Allowed Actions:
 1. **Introduction**: Greet warmly, introduce yourself as IndiraBot from Indira IVF, and state you’re here to help. This should only happen at the beginning.
-2. **FAQ Resolution**: Answer user questions based on the FAQs section in the provided dataset. Respond in the user's last used language, providing the full answer from the dataset {faq}.
-3. **Nearby Centers**: If asked for nearby Indira IVF centers, check the dataset’s location information to suggest the closest ones based on user-provided city/state. Acknowledge if additional tool/API might be required for precision. Provide the full address from the dataset {centers}. If user provides coordinates:
+2. **FAQ Resolution**: Answer user questions based on the FAQs section in the provided dataset. Respond in the user's last used language, providing the full answer from the dataset .
+3. **Nearby Centers**: If asked for nearby Indira IVF centers, check the dataset’s location information to suggest the closest ones based on user-provided city/state. Acknowledge if additional tool/API might be required for precision. Provide the full address from the dataset . If user provides coordinates:
     3.1 **Coordinates**: Use the dataset to give the address of the nearest center.
     3.2 **Estimated Distances**: Calculate the approximate distance (in kilometers) and estimated travel time to the nearest center based on the provided coordinates and information in the dataset. Include this information in your response, along with the "Know More" link from the dataset. Keep this response concise and empathetic.
-4. **Need Generation**: Understand user details (such as treatment interest, urgency, marital history, etc.) and respond with warm, general insights using the dataset (without offering medical advice). Provide the full answer given in the dataset {need}.
+4. **Need Generation**: Understand user details (such as treatment interest, urgency, marital history, etc.) and respond with warm, general insights using the dataset (without offering medical advice). Provide the full answer given in the dataset .
 5. **AI-Generated Answers**: If the answer isn’t directly available in the dataset, respond empathetically using your best knowledge and make it clear it is AI-generated, not medical advice. Keep this concise.
 6. **Suggestion Solicitation**: After answering, gently ask if there’s anything else you can help with.
 7. **End Conversation**: Politely end the chat when the user’s queries are resolved or if they wish to exit.
@@ -57,12 +69,35 @@ Assistant's Guidelines:
 - Strictly respond to one user message at a time.
 - Never ask the user to wait.
 - Use only the dataset provided (via JSON) to answer questions unless a creative AI response is needed for unavailable information.
-- Always match the client’s last used language in your response. Focus on the language of the most recent question.
+- Always match the client’s last used language in your response. Focus on the language of the most recent question and it can be there that the address is in english but the words are of hindi language but give response in english.
+--please give the addres properly which i have given in the database as ivf_clicnic.json which is in vector store use that properly
+--for nearby center fetch the appropriate center from vector stores which will be near to them and this is very important for eg if i'm sending corrdinates near udaipur city then find the centers in udaipur from vector stores and suggest me that center which are closet from my coordinates if coordinates are given
+--ensure that you don't generate address and don't generate address on your own you should only use that address which is given in ivf_clinic.json in vector stores don't mismatch the two address also please ensure this and only take address from vector store given in file id which is ivf_clinic.json
+--i'm giving the coordinates so suggest me near by center and the centers are available in ivf_clinic.json so see that dataset in vector store and according to the coordinates give me appropriate centers near by my coordinates and this is very important
+--don't give my dataset name or etc just give gentle answer in sweet voice and in the same language in which the user have asked
+-note if i ask for any faq search in faq.json in vector store that i have provided but if ask for any nearby center then search in ivf_clinic.json and of i ask for need generation then search in need.json
 """
+        vector_store = await self.client.vector_stores.create(name="IVF Knowledge Base")
 
+    # Step 3: Attach all files concurrently to the vector store
+        attach_tasks = [
+            self.client.vector_stores.files.create(
+                vector_store_id=vector_store.id,
+                file_id=file.id
+            )
+            for file in uploaded_files
+        ]
+        await asyncio.gather(*attach_tasks)
         if not self.assistant:
-            self.assistant = self.client.beta.assistants.create(
-                model="gpt-4-1106-preview", instructions=self.instructions
+            self.assistant = await self.client.beta.assistants.create(
+                model="gpt-4-1106-preview",
+                instructions=self.instructions,
+                tools=[{"type": "file_search"}],
+                 tool_resources={
+        "file_search": {
+            "vector_store_ids": [vector_store.id]
+        }
+    } 
             )
             print("Assistant initialized!")
         else:
@@ -80,18 +115,18 @@ Assistant's Guidelines:
         try:
 
             if self.thread is None:
-                self.thread = self.client.beta.threads.create()
+                self.thread =  await self.client.beta.threads.create()
 
-            self.client.beta.threads.messages.create(
+            await self.client.beta.threads.messages.create(
                 thread_id=self.thread.id, role="user", content=question
             )
 
-            run = self.client.beta.threads.runs.create(
+            run = await self.client.beta.threads.runs.create(
                 thread_id=self.thread.id, assistant_id=self.assistant.id
             )
 
             while True:
-                run_status = self.client.beta.threads.runs.retrieve(
+                run_status = await self.client.beta.threads.runs.retrieve(
                     thread_id=self.thread.id, run_id=run.id
                 )
                 if run_status.status == "completed":
@@ -100,9 +135,9 @@ Assistant's Guidelines:
                     print("❌ Assistant run failed. Reason:")
                     print(run_status.model_dump_json(indent=2))
                     return "The assistant failed to generate a response."
-                await asyncio.sleep(0.1)
+                await asyncio.sleep(0.4)
 
-            messages = self.client.beta.threads.messages.list(
+            messages = await self.client.beta.threads.messages.list(
                 thread_id=self.thread.id, run_id=run.id
             )
 
@@ -133,9 +168,9 @@ Assistant's Guidelines:
 
         try:
 
-            temp_thread = self.client.beta.threads.create()
+            temp_thread = await self.client.beta.threads.create()
 
-            self.client.beta.threads.messages.create(
+            await self.client.beta.threads.messages.create(
                 thread_id=temp_thread.id,
                 role="user",
                 content=f"""
@@ -166,12 +201,12 @@ Assistant's Guidelines:
     """,
             )
 
-            run = self.client.beta.threads.runs.create(
+            run = await self.client.beta.threads.runs.create(
                 thread_id=temp_thread.id, assistant_id=self.assistant.id
             )
 
             while True:
-                run_status = self.client.beta.threads.runs.retrieve(
+                run_status = await self.client.beta.threads.runs.retrieve(
                     thread_id=temp_thread.id, run_id=run.id
                 )
                 if run_status.status == "completed":
@@ -181,7 +216,7 @@ Assistant's Guidelines:
                     return "Sorry, I couldn't extract your appointment details. Please try again."
                 await asyncio.sleep(0.2)
 
-            messages = self.client.beta.threads.messages.list(thread_id=temp_thread.id)
+            messages = await self.client.beta.threads.messages.list(thread_id=temp_thread.id)
             assistant_response = None
             for message in reversed(messages.data):
                 if message.role == "assistant":
@@ -262,18 +297,18 @@ Assistant's Guidelines:
             )
             prompt = f"Given the following chat history, generate an appropriate thread name:\n{history_text} and generate thread name in same language the user asked question in this is very important the chatname should be in same language the user asked question and for location generate thread name in english"
 
-            thread = self.client.beta.threads.create()
+            thread = await self.client.beta.threads.create()
 
-            self.client.beta.threads.messages.create(
+            await self.client.beta.threads.messages.create(
                 thread_id=thread.id, role="user", content=prompt
             )
 
-            run = self.client.beta.threads.runs.create(
+            run = await self.client.beta.threads.runs.create(
                 thread_id=thread.id, assistant_id=self.assistant.id
             )
 
             while True:
-                run_status = self.client.beta.threads.runs.retrieve(
+                run_status = await self.client.beta.threads.runs.retrieve(
                     thread_id=thread.id, run_id=run.id
                 )
                 if run_status.status == "completed":
@@ -282,7 +317,7 @@ Assistant's Guidelines:
                     return "The assistant failed to generate a thread name."
                 await asyncio.sleep(0.1)
 
-            messages = self.client.beta.threads.messages.list(thread_id=thread.id)
+            messages = await self.client.beta.threads.messages.list(thread_id=thread.id)
 
             assistant_answer = None
             for message in reversed(messages.data):

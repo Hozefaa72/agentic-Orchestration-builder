@@ -1,27 +1,28 @@
 import asyncio
 from fastapi import WebSocket, WebSocketDisconnect, APIRouter
-from openai import OpenAI
-from backend.app.modules.assistant_init import IVFChatbot
+from backend.app.core.assistant import manager
 import json
-from backend.app.config.config import Settings
-import os
-from backend.app.database.curds import (
-    create_message,
-    get_all_messages,
-    get_thread_by_name,
-    update_thread_name,
-    get_user_by_id,
-)
-from backend.app.modules.websocket_init import WebSocketManager
+import logging
+from backend.app.cruds.message_cruds import create_message,get_all_messages
+from backend.app.cruds.threads_cruds import update_thread_name,get_thread_by_name
+from backend.app.core.websocket_init import WebSocketManager
 from fastapi import Query
-from backend.app.modules.jwt_handler import decode_jwt
+from backend.app.auth.jwt_handler import decode_jwt
 import json
 
-os.environ["OPENAI_API_KEY"] = Settings().OPENAI_API_KEY
-client = OpenAI(default_headers={"OpenAI-Beta": "assistants=v2"})
-manager = IVFChatbot(client)
+
+# os.environ["OPENAI_API_KEY"] = Settings().OPENAI_API_KEY
+# faq= Settings().FAQ_FILE_ID
+# clinic= Settings().CENTER_FILE_ID
+# need = Settings().NEED_FILE_ID
+# client = OpenAI(
+#     api_key=Settings().OPENAI_API_KEY,
+#     default_headers={"OpenAI-Beta": "assistants=v2"}
+# )
+# manager = IVFChatbot(client,faq,clinic,need)
 assistant_router = APIRouter()
 websocket_manager = WebSocketManager()
+logger = logging.getLogger(__name__)
 
 #####maincode####
 # @assistant_router.websocket("/ws")
@@ -156,14 +157,14 @@ websocket_manager = WebSocketManager()
 #         print(f"🔌 User {user_id} disconnected.")
 @assistant_router.websocket("/ws")
 async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
-    print(f"🟡 Incoming WebSocket request with token: {token}")
+    logger.info(f"\U0001F7E1 Incoming WebSocket request with token: {token}")
     await websocket.accept()
 
     try:
         current_user = decode_jwt(token)
-        print("✅ Authenticated User:", current_user)
+        logger.info(f"\u2705 Authenticated User: {current_user}")
     except Exception as e:
-        print("❌ JWT decode failed:", str(e))
+        logger.warning(f"\u274C JWT decode failed: {e}")
         await websocket.close(code=1008)
         return
 
@@ -185,17 +186,14 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
         while True:
             raw_data = await websocket.receive_text()
             data = json.loads(raw_data)
-            print("📩 Received data:", data)
 
             if data.get("type") == "init":
                 new_thread_id = data.get("thread_id")
                 if active_connection["thread_id"] == new_thread_id:
-                    print("⚠️ Already on same thread. Skipping re-init.")
                     continue
                 if active_connection["thread_id"] != new_thread_id:
                     active_connection["thread_id"] = new_thread_id
                     websocket_manager.set_thread(user_id, session_id, new_thread_id)
-                    print(f"🔁 Switched to thread_id: {new_thread_id}")
 
                 # Send appropriate welcome message based on context
                 welcome_type = data.get("welcome")
@@ -244,7 +242,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                         json.dumps(
                             {
                                 "type": "error",
-                                "text": "❗ Please initialize a thread before sending messages.",
+                                "text": "Please initialize a thread before sending messages.",
                             }
                         )
                     )
@@ -252,11 +250,10 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
 
                 # Ensure assistant is ready
                 if not manager.assistant:
-                    asyncio.create_task(manager.initialize_assistant())
-                user = get_user_by_id(user_id)
+                    await manager.initialize_assistant()
+                # user = get_user_by_id(user_id)
 
                 if data.get("subtype") == "appointment":
-                    print("📍 In appointment subtype")
 
                     # For appointment: get only address without polluting main thread
                     response_task = asyncio.create_task(
@@ -274,15 +271,15 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                     messages = await get_all_messages(thread_id)
 
                 else:
-                    print("💬 In normal else flow")
 
                     # Normal user flow
                     await create_message(
                         content=content, sender="user", thread_id=thread_id
                     )
                     messages = await get_all_messages(thread_id)
+                    print("printing the subtypes ",data.get("subtype"))
                     response_task = asyncio.create_task(
-                        manager.get_response(content, messages)
+                        manager.get_response(content, messages,data.get("subtype"))
                     )
                     response = await response_task
 
@@ -293,8 +290,14 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                 # Auto-rename thread if it's "New Chat"
                 thread_name = await get_thread_by_name(thread_id)
                 if thread_name == "New Chat":
-                    chat_name = asyncio.create_task(manager.get_thread_name(messages))
-                    chat_name = await chat_name
+                    if data.get("subtype")=="appointment":
+                        chat_name="Booking an Appointment"
+                    elif data.get("subtype")=="clinic":
+                        chat_name="Finding Near By Center"
+                    else:
+                        chat_name="General Enquiry"
+                    # chat_name = asyncio.create_task(manager.get_thread_name(messages))
+                    # chat_name = await chat_name
                     await update_thread_name(thread_id, chat_name)
 
                 await websocket.send_text(
@@ -303,14 +306,14 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
 
             elif data.get("type") == "update-thread":
                 await websocket_manager.broadcast_to_all_sessions(
-                    user_id, "🆕 New thread created or updated!"
+                    user_id, "New thread created or updated!"
                 )
 
             elif data.get("type") == "login_success":
-                print("🔐 Login successful:", data.get("message"))
+                print("Login successful:", data.get("message"))
 
     except WebSocketDisconnect:
         websocket_manager.disconnect(
-            user_id, session_id, active_connection["thread_id"]
+            user_id, session_id
         )
-        print(f"🔌 User {user_id} disconnected.")
+        print(f"User {user_id} disconnected.")

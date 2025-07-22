@@ -19,7 +19,6 @@ class TrimmedAuthMiddleware(BaseHTTPMiddleware):
         return None
 
     async def dispatch(self, request: Request, call_next):
-        print("Printing dispatch")
 
         if request.url.path in PUBLIC_ENDPOINTS:
             response = await call_next(request)
@@ -28,7 +27,6 @@ class TrimmedAuthMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         authorization: str = request.headers.get("Authorization")
-        print("Printing Authorization header:", authorization)
 
         if not authorization:
             raise HTTPException(status_code=401, detail="Authorization header missing")
@@ -43,7 +41,6 @@ class TrimmedAuthMiddleware(BaseHTTPMiddleware):
 
             payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
             user_id = payload.get("user_id")
-            print("After payload")
 
             if user_id is None:
                 raise HTTPException(
