@@ -23,6 +23,7 @@ kafka-python = "^2.1.5"
 aiohttp = "^3.11.18"
 chromadb = "0.4.24"
 numpy = "1.26.4"
+boto3 = "^1.40.18"
 
 [tool.poetry.scripts]
 dev = "src.backend.app.main:main"

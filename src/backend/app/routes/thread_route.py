@@ -104,7 +104,7 @@ async def get_user_threads(current_user: dict = Depends(get_current_user)):
 
 
 @chat_router.get("/create_threads")
-async def create_thread(current_user: dict = Depends(get_current_user)):
+async def create_thread(lang:str,current_user: dict = Depends(get_current_user)):
     try:
         user_id = current_user.get("user_id")
         session_id = current_user.get("session_id")
@@ -114,6 +114,7 @@ async def create_thread(current_user: dict = Depends(get_current_user)):
         new_thread = Thread(
             user_id=user_id,
             thread_name="New Chat",
+            language=lang,
             timestamp=datetime.now(timezone.utc),
         )
         token = update_jwt(user_id, str(new_thread.id), session_id)

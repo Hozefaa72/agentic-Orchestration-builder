@@ -100,6 +100,7 @@ Assistant's Guidelines:
     async def get_response(self, question: str, chat_history: list, query_type: str = "clinic") -> str:
         try:
             query_type=await detect_query_type(question)
+            print("printing the query type")
             if query_type == "clinic":
                 short_question = question.split(',')
                 collection = collections.get(query_type)
@@ -126,7 +127,7 @@ Assistant's Guidelines:
                     query_embeddings=[question_embedding],
                     n_results=10
                 )
-
+                print(results)
                 context_chunks = results["documents"][0] if results["documents"] else []
                 context = "\n---\n".join(context_chunks)
 

@@ -87,3 +87,15 @@ async def login(user_data: UserLogin):
         raise HTTPException(
             status_code=500, detail="Internal server error during login"
         )
+
+@auth_router.get("/guest_token")
+async def guest_token():
+    try:
+        print("inside guest token")
+        token = sign_jwt("guest")
+        print("token generated",token)
+        return {"msg": "Guest token generated", "token": token}
+    except Exception as e:
+        raise HTTPException(
+            status_code=500, detail="Internal server error during guest token generation"
+        )

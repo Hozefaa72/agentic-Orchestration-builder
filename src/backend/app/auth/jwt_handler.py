@@ -2,10 +2,9 @@ from fastapi import HTTPException,status
 import time
 from typing import Dict
 import jwt
-from backend.app.config import Settings
+from backend.app.config import settings
 from jwt import ExpiredSignatureError, InvalidTokenError
 import uuid
-
 
 def generate_session_id() -> str:
     try:
@@ -45,7 +44,7 @@ def token_response(token: str):
         )
 
 
-secret_key = Settings().SECRET_KEY
+secret_key = settings.SECRET_KEY
 
 
 def sign_jwt(user_id: str) -> Dict[str, str]:
@@ -63,11 +62,13 @@ def sign_jwt(user_id: str) -> Dict[str, str]:
         if not user_id or not isinstance(user_id, str):
             raise HTTPException(status_code=422, detail="Invalid user ID for JWT")
         session_id = generate_session_id()
+        print("session id",session_id)
         payload = {
             "user_id": user_id,
             "session_id": session_id,
-            "expires": time.time() + 86400,
+            "expires": time.time() + (settings.GUEST_TOKEN_EXPIRY_DAYS*settings.GUEST_TOKEN_EXPIRY_SECONDS),
         }
+        print(payload)
         return token_response(jwt.encode(payload, secret_key, algorithm="HS256"))
     except jwt.PyJWTError as jwt_err:
         raise HTTPException(status_code=500, detail="Token generation failed")
@@ -94,7 +95,7 @@ def update_jwt(user_id: str, thread_id: str, session_id: str) -> Dict[str, str]:
             "user_id": user_id,
             "session_id": session_id,
             "thread_id": thread_id,
-            "expires": time.time() + 86400,
+            "expires": time.time() + (settings.GUEST_TOKEN_EXPIRY_DAYS*settings.GUEST_TOKEN_EXPIRY_SECONDS),
         }
         return token_response(jwt.encode(payload, secret_key, algorithm="HS256"))
     except ValueError as ve:

@@ -6,10 +6,14 @@ import logging
 from backend.app.cruds.message_cruds import create_message,get_all_messages
 from backend.app.cruds.threads_cruds import update_thread_name,get_thread_by_name
 from backend.app.core.websocket_init import WebSocketManager
+from backend.app.core.appointmentflow import appointment_flow
+from backend.app.core.botoclient import flow_check
 from fastapi import Query
 from backend.app.auth.jwt_handler import decode_jwt
 import json
-
+import time
+from bson import ObjectId
+from backend.app.models.threads import Thread
 
 # os.environ["OPENAI_API_KEY"] = Settings().OPENAI_API_KEY
 # faq= Settings().FAQ_FILE_ID
@@ -235,8 +239,40 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
 
             elif data.get("type") == "message":
                 content = data.get("message")
-                thread_id = active_connection["thread_id"]
+                # thread_id = active_connection["thread_id"]
+                thread_id=data.get("thread_id")
+                thread_obj_id = ObjectId(thread_id)
+                thread = await Thread.find_one(Thread.id == thread_obj_id)
+                flow_id=thread.flow_id
+                step_id=thread.step_id
+                language=thread.language
+                print(thread)
+                if data.get("isflow") =="confirm":
+                    print("in confirm")
+                    thread.flow_id=data.get("subtype")
+                    await thread.save()
+                    flow_id=data.get("subtype")
+                    step_id=None
+                else:
+                    print("in flow check")
+                    llm_flow_id=await flow_check(content)
+                    if llm_flow_id != "None":
+                        if llm_flow_id != flow_id:
+                            thread.flow_id=llm_flow_id
+                            thread.step_id=None
+                            flow_id=llm_flow_id
+                            step_id=None
+                            await thread.save()
 
+
+                            
+                # if data.get("subtype") == "appointment":
+                #     print("in appointment")
+                #     response="To book appointment, please share your name "
+                #     await websocket.send_text(
+                #     json.dumps({"type": "message", "text": response})
+                # )
+                # print(thread_id)
                 if not thread_id:
                     await websocket.send_text(
                         json.dumps(
@@ -253,39 +289,63 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                     await manager.initialize_assistant()
                 # user = get_user_by_id(user_id)
 
-                if data.get("subtype") == "appointment":
+                if data.get("subtype") == "book_appointment" or flow_id=="book_appointment":
+                    print("in book appointment")
+                    response=await appointment_flow(thread_id,flow_id,step_id,language,content)
+                    await websocket.send_text(
+                        json.dumps({"type": "message", "text": response})
+                    )
+                if data.get("subtype") == "ivf_success_calculator" or flow_id =="ivf_success_calculator":
+                    msg1 = "Yes, Sure. We have devised an IVF Success Calculator which gives success rate based on historical data of Indira IVF."
+                    msg2 = """This is how our IVF Success Calculator works.
+                              1 Share details and reports
+                              2 We analyze key fertility factors
+                              3 Know success rate for each cycle"""
+
+                    # First message
+                    await websocket.send_text(
+                        json.dumps({"type": "message", "text": msg1})
+                    )
+
+                    # Small delay if you want them to appear one after the other
+                    await asyncio.sleep(1)
+
+                    # Second message
+                    await websocket.send_text(
+                        json.dumps({"type": "message", "text": msg2})
+                    )
 
                     # For appointment: get only address without polluting main thread
-                    response_task = asyncio.create_task(
-                        manager.get_nearby_center_address_only(content)
-                    )
-                    response = await response_task
+                    # response_task = asyncio.create_task(
+                    #     manager.get_nearby_center_address_only(content)
+                    # )
+                    # response = await response_task
 
                     # Only create a mini-message for user reference
-                    await create_message(
-                        content=content, sender="user", thread_id=thread_id
-                    )
-                    await create_message(
-                        content=response, sender="assistant", thread_id=thread_id
-                    )
-                    messages = await get_all_messages(thread_id)
+                    # await create_message(
+                    #     content=content, sender="user", thread_id=thread_id
+                    # )
+                    # await create_message(
+                    #     content=response, sender="assistant", thread_id=thread_id
+                    # )
+                    # messages = await get_all_messages(thread_id)
 
-                else:
+                # else:
 
-                    # Normal user flow
-                    await create_message(
-                        content=content, sender="user", thread_id=thread_id
-                    )
-                    messages = await get_all_messages(thread_id)
-                    print("printing the subtypes ",data.get("subtype"))
-                    response_task = asyncio.create_task(
-                        manager.get_response(content, messages,data.get("subtype"))
-                    )
-                    response = await response_task
+                #     # Normal user flow
+                #     await create_message(
+                #         content=content, sender="user", thread_id=thread_id
+                #     )
+                #     messages = await get_all_messages(thread_id)
+                #     print("printing the subtypes ",data.get("subtype"))
+                #     response_task = asyncio.create_task(
+                #         manager.get_response(content, messages,data.get("subtype"))
+                #     )
+                #     response = await response_task
 
-                    await create_message(
-                        content=response, sender="assistant", thread_id=thread_id
-                    )
+                #     await create_message(
+                #         content=response, sender="assistant", thread_id=thread_id
+                #     )
 
                 # Auto-rename thread if it's "New Chat"
                 thread_name = await get_thread_by_name(thread_id)
@@ -300,9 +360,9 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                     # chat_name = await chat_name
                     await update_thread_name(thread_id, chat_name)
 
-                await websocket.send_text(
-                    json.dumps({"type": "message", "text": response})
-                )
+                # await websocket.send_text(
+                #         json.dumps({"type": "message", "text": response})
+                #     )
 
             elif data.get("type") == "update-thread":
                 await websocket_manager.broadcast_to_all_sessions(

@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-PUBLIC_ENDPOINTS = ["/auth/login", "/auth/signup", "/docs", "/openapi.json"]
+PUBLIC_ENDPOINTS = ["/auth/login", "/auth/signup","/auth/guest_token", "/docs", "/openapi.json"]
 
 
 class TrimmedAuthMiddleware(BaseHTTPMiddleware):

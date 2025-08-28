@@ -20,6 +20,9 @@ class Thread(Document):
     timestamp: datetime = Field(default_factory=datetime.now(timezone.utc))
     thread_name: Optional[str] = None
     user_id: str
+    language:Optional[str] = None
+    flow_id:Optional[str] = None
+    step_id:Optional[str] = None
     location: Optional[str] = ""
     country: Optional[str] = ""
     cache: Optional[Cache] = Field(default_factory=Cache)
