@@ -15,6 +15,7 @@ class User_Info(Document):
     phone_number: Optional[str] = None
     pincode:Optional[str] = None
     address: Optional[str] = None
+    preffered_center:Optional[list]=[]
     checkup_date:Optional[str]=None
     checkup_time_slot:Optional[str]=None
     appointment_status:AppointmentStatus = AppointmentStatus.NOT_BOOKED

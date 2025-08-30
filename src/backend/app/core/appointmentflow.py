@@ -82,6 +82,7 @@ import re
 import boto3
 from backend.app.models.threads import Thread
 from backend.app.models.user_info import User_Info
+from backend.app.core.ivf_centers import find_nearest_by_postal
 from bson import ObjectId
 import json
 
@@ -125,7 +126,7 @@ async def appointment_flow(
             },
             "2": {
                 "step_id": "2",
-                "message": "Thanks, {name}. Please provide your mobile number so we can proceed with booking your appointment",
+                "message": "Thanks. Please provide your mobile number so we can proceed with booking your appointment",
                 "expected_input": "name of the person",
                 "valid_condition": r"^[A-Za-z\s]{2,50}$",
                 "action": "send_otp_api",
@@ -155,7 +156,7 @@ async def appointment_flow(
             },
             "5": {
                 "step_id": "5",
-                "message": "Here are 3 nearby centers for PIN {pincode}: {centers_list}. Please select one.",
+                "message": "",
                 "expected_input": "pincode",
                 "valid_condition": r"^\d{6}$",
                 "action": "fetch_centers_api",
@@ -165,7 +166,7 @@ async def appointment_flow(
             },
             "6": {
                 "step_id": "6",
-                "message": "You selected {center}. Full address: {center_address}. Now, please select a preferred date (YYYY-MM-DD).",
+                "message": ["","Please select your preferred date from the calendar."],
                 "expected_input": "center_selection",
                 "valid_condition": r".+",
                 "action": None,
@@ -175,7 +176,7 @@ async def appointment_flow(
             },
             "7": {
                 "step_id": "7",
-                "message": "Available time slots on {date} are: {time_slots}. Please choose one.",
+                "message": "Please pick a time slot time to book your appointment",
                 "expected_input": "date",
                 "valid_condition": r"^\d{4}-\d{2}-\d{2}$",
                 "action": "fetch_time_slots_api",
@@ -203,25 +204,89 @@ async def appointment_flow(
  
     if not user_message or user_message.strip() == "":
         user_message = ""
+    # msg = step["message"]
+    # user = await User_Info.find_one(User_Info.thread_id == thread_id)
 
+    # # अगर message list में है तो उसे join कर लो
+    # if isinstance(msg, list):
+    #     msg = " ".join(msg)
+
+    # # name placeholder replace
+    # if "{name}" in msg:
+    #     if step["step_id"] == "2":  
+    #         # Step 2 पर user_message ही name है
+    #         msg = msg.replace("{name}", user_message)
+    #     elif user and user.name:
+    #         msg = msg.replace("{name}", user.name)
+
+    # # pincode replace
+    # if "{pincode}" in msg and user and getattr(user, "pincode", None):
+    #     msg = msg.replace("{pincode}", user.pincode)
+
+    # # center replace
+    # if "{center}" in msg and user and getattr(user, "center", None):
+    #     msg = msg.replace("{center}", user.center)
+
+    # # date replace
+    # if "{date}" in msg and user and getattr(user, "date", None):
+    #     msg = msg.replace("{date}", user.date)
+
+    # # time_slot replace
+    # if "{time_slot}" in msg and user and getattr(user, "time_slot", None):
+    #     msg = msg.replace("{time_slot}", user.time_slot)
   
+    # print(msg)
+    if step["step_id"]=="5":
+        response=find_nearest_by_postal(user_message)
+        if response:
+            user=await User_Info.find_one(User_Info.thread_id==thread_id)
+            user.preffered_center=response
+            await user.save()
+            next_step = step["next_step"]
+            if thread:
+                thread.flow_id = flow_id
+                thread.step_id = next_step
+                await thread.save()
+            return response,"centers"
+        else:
+            return "Postal code not found or invalid",None
+        
+    if step["step_id"]=="6":
+        user=await User_Info.find_one(User_Info.thread_id==thread_id)
+        for c in user.preffered_center:
+            if c["City"].strip().lower() == user_message.strip().lower():
+                user.address=c["Address"]
+                await user.save()
+                step["message"][0]=c["Address"]
+        if step["message"][0]=="":
+            return "Please enter a valid city",None
+
+            
+
+
+
+
+
+
 
    
     prompt = f"""
 You are a validation assistant.
 Conversation language = {language}.
 Step: {step_id}, Expecting: {step['expected_input']}
+the expected input can also be in user selected language also 
 User input: "{user_message}"
 Valid condition (regex): {step['valid_condition']}
-return the reposne in user language only
-please return the response only this {step['message']} in the language of the user 
+
+please return the response only this {step['message']}
+and if the {step['message']} is list then return that list in user language- {language}
 if the user enters invalid response then the expected input then use {step['other_text']} and if it enters invalid input three times then give him {step['final_text']} and in user language
 
  Important: Respond ONLY in valid JSON, nothing else.
 Format:
 {{
   "status": "VALID" or "INVALID",
-  "bot_response": "string (next message to show the user in {language})"
+  "bot_response": "string or list of string  (next message to show the user in {language})"
 }}
 
 Rules:
@@ -268,6 +333,14 @@ Rules:
             user=await User_Info.find_one(User_Info.thread_id==thread_id)
             user.pincode=user_message
             await user.save()
+        if step["step_id"]=="7":
+            user=await User_Info.find_one(User_Info.thread_id==thread_id)
+            user.checkup_date=user_message
+            await user.save()
+        if step["step_id"]=="8":
+            user=await User_Info.find_one(User_Info.thread_id==thread_id)
+            user.checkup_time_slot=user_message
+            await user.save()
 
 
 
@@ -279,7 +352,13 @@ Rules:
             await thread.save()
 
         # return structured JSON (with bot response filled from flow)
-        return llm_json.get("bot_response")
+
+        if step["step_id"]=="7":
+            return llm_json.get("bot_response"),"time_slots"
+        elif step["step_id"]=="6":
+            return llm_json.get("bot_response"),"calendar"
+        else:
+            return llm_json.get("bot_response"),None
     else:
         # stay on same step
         if thread and step["step_id"] == "1":
@@ -287,4 +366,4 @@ Rules:
             thread.flow_id = flow_id
             thread.step_id = next_step
             await thread.save()
-        return llm_json.get("bot_response")
+        return llm_json.get("bot_response"),None
