@@ -7,6 +7,7 @@ from backend.app.cruds.message_cruds import create_message,get_all_messages
 from backend.app.cruds.threads_cruds import update_thread_name,get_thread_by_name
 from backend.app.core.websocket_init import WebSocketManager
 from backend.app.core.appointmentflow import appointment_flow
+from backend.app.core.ivf_calculation_flow import ivf_success_calculation_flow
 from backend.app.core.end_flow import end_flow
 from backend.app.core.flow_classifier import flow_check
 from fastapi import Query
@@ -247,6 +248,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                 flow_id=thread.flow_id
                 step_id=thread.step_id
                 language=thread.language
+                print("the sellected language is",language)
                 print(thread)
                 if data.get("isflow") =="confirm":
                     print("in confirm")
@@ -315,6 +317,16 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 "contentType": contentType
                             })
                         )
+                    elif isinstance(response, list) and contentType == "booked":
+                        for i, item in enumerate(response):
+                            await websocket.send_text(
+                                json.dumps({
+                                    "type": "message",
+                                    "text": item,
+                                    "contentType": contentType if i == 0 else None
+                                })
+                            )
+                            await asyncio.sleep(1)
 
                     elif isinstance(response, list) and contentType != "centers":
                         for message in response:
@@ -336,23 +348,26 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                             })
                         )
                 if data.get("subtype") == "ivf_success_calculator" or flow_id =="ivf_success_calculator":
-                    msg1 = "Yes, Sure. We have devised an IVF Success Calculator which gives success rate based on historical data of Indira IVF."
-                    msg2 = """This is how our IVF Success Calculator works.\n
-                              1 Share details and reports\n
-                              2 We analyze key fertility factors\n
-                              3 Know success rate for each cycle"""
+                    response=await ivf_success_calculation_flow(language)
 
-                    # First message
+                    # msg1 = "Yes, Sure. We have devised an IVF Success Calculator which gives success rate based on historical data of Indira IVF."
+                    # msg2 = """This is how our IVF Success Calculator works.\n
+                    #           1 Share details and reports\n
+                    #           2 We analyze key fertility factors\n
+                    #           3 Know success rate for each cycle"""
+                    message=response
+                    # # First message
+                    print(response[0])
                     await websocket.send_text(
-                        json.dumps({"type": "message", "text": msg1})
+                        json.dumps({"type": "message", "text": message[0]})
                     )
 
                     # Small delay if you want them to appear one after the other
                     await asyncio.sleep(1)
-
+                    print(response[1])
                     # Second message
                     await websocket.send_text(
-                        json.dumps({"type": "message", "text": msg2,"contentType": "ivf_calculate"})
+                        json.dumps({"type": "message", "text": message[1],"contentType": "ivf_calculate"})
                     )
 
                     # For appointment: get only address without polluting main thread

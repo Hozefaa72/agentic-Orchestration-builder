@@ -81,7 +81,7 @@
 import re
 import boto3
 from backend.app.models.threads import Thread
-from backend.app.models.user_info import User_Info
+from backend.app.models.user_info import User_Info,AppointmentStatus
 from backend.app.core.ivf_centers import find_nearest_by_postal
 from bson import ObjectId
 import json
@@ -186,7 +186,7 @@ async def appointment_flow(
             },
             "8": {
                 "step_id": "8",
-                "message": " Great! Your appointment is booked at {center} on {date} at {time_slot}. A confirmation has been sent to {phone_number}.",
+                "message": ["Your appointment details have been sent to your registered mobile number","Let me know if you want to reschedule or cancel the appointment"],
                 "expected_input": "time-slot",
                 "valid_condition": r"^\d{2}:\d{2}",
                 "action": "save_appointment_api",
@@ -254,8 +254,10 @@ async def appointment_flow(
     if step["step_id"]=="6":
         user=await User_Info.find_one(User_Info.thread_id==thread_id)
         for c in user.preffered_center:
-            if c["City"].strip().lower() == user_message.strip().lower():
+            if c["Clinic Name"].strip().lower() == user_message.strip().lower():
                 user.address=c["Address"]
+                user.City=c["City"]
+                user.State=c["State"]
                 await user.save()
                 step["message"][0]=c["Address"]
         if step["message"][0]=="":
@@ -340,7 +342,11 @@ Rules:
         if step["step_id"]=="8":
             user=await User_Info.find_one(User_Info.thread_id==thread_id)
             user.checkup_time_slot=user_message
+            user.appointment_status=AppointmentStatus.BOOKED
             await user.save()
+            if "bot_response" in llm_json and isinstance(llm_json["bot_response"], list):
+                user_info={"Date":user.checkup_date,"Time":user.checkup_time_slot,"Address":user.address,"City":user.City,"State":user.State}
+                llm_json["bot_response"].insert(0,user_info)
 
 
 
@@ -357,6 +363,8 @@ Rules:
             return llm_json.get("bot_response"),"time_slots"
         elif step["step_id"]=="6":
             return llm_json.get("bot_response"),"calendar"
+        elif step["step_id"]=="8":
+            return llm_json.get("bot_response"),"booked"
         else:
             return llm_json.get("bot_response"),None
     else:
