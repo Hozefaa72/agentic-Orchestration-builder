@@ -45,6 +45,7 @@ def find_nearest_by_postal(postal_code, top_n=3):
         results.append({
             "Clinic Name": name,
             "City": clinic.get("City"),
+            "State":clinic.get("State"),
             "Address":clinic.get("Address"),
             "Postal": clinic.get("Postal"),
             "Distance_km": round(dist, 2)

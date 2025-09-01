@@ -1,6 +1,6 @@
 import boto3
 import time
-async def bot_generate(msg: str):    
+async def bot_generate(msg: str,max_token:int=10):    
     starttime=time.time()
     client = boto3.client("bedrock-runtime")
 
@@ -19,7 +19,7 @@ async def bot_generate(msg: str):
         modelId=model_id,
         messages=messages,
         inferenceConfig={
-            "maxTokens": 10,   
+            "maxTokens": max_token,   
             "temperature": 0.0,
         },
     )

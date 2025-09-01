@@ -13,7 +13,7 @@ async def end_flow(
     prompt=f"""You are a helpful assistant. 
 Your only task is to respond with the exact phrase "Anything else you want to know" 
 translated into user language - {language}. """
-    response= await bot_generate(prompt)
+    response= await bot_generate(prompt,100)
     thread.flow_id=None
     thread.step_id=None
     await thread.save()
