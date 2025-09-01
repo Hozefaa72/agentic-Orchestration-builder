@@ -20,7 +20,7 @@ def get_coordinates(query):
 
 def find_nearest_by_postal(postal_code, top_n=3):
     # First, check if postal code exists in dataset
-    with open("src\\backend\\app\\datasets\\new_ivf_clinic.json", "r", encoding="utf-8") as f:
+    with open("app\\datasets\\new_ivf_clinic.json", "r", encoding="utf-8") as f:
         clinics = json.load(f)
     base_clinic = next((c for c in clinics if str(c.get("Postal")) == str(postal_code)), None)
 
