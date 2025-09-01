@@ -3,9 +3,6 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
-
-# RUN apt-get update && apt-get install -y curl build-essential ca-certificates && rm -rf /var/lib/apt/lists/*
-
 RUN apt-get update && apt-get install -y \
     curl \
     build-essential \
@@ -14,17 +11,25 @@ RUN apt-get update && apt-get install -y \
     libnss3 \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Poetry
-RUN curl -sSL https://install.python-poetry.org | python3 -
+# Install uv (ultra-fast Python package manager)
+RUN curl -Ls https://astral.sh/uv/install.sh | bash
+
+# Add uv to PATH
 ENV PATH="/root/.local/bin:$PATH"
 
-# Copy full codebase BEFORE poetry install so /src/backend exists
+# Copy project files
 COPY . .
 
-# Install dependencies
-RUN poetry config virtualenvs.create false && poetry install --no-interaction --no-ansi
+# Create virtual environment and install dependencies
+RUN uv venv --python=3.11 \
+    && . .venv/bin/activate \
+    && uv pip install .
+
+# Activate virtualenv on container start
+ENV VIRTUAL_ENV=/app/.venv
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 
 EXPOSE 8001
 
-# CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8001", "--reload"]
-CMD ["poetry", "run", "dev"]
+# Run your FastAPI app via start.py using uv's Python
+CMD ["python", "start.py"]
