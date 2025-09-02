@@ -26,5 +26,4 @@ async def bot_generate(msg: str,max_token:int=10):
 
     answer = response["output"]["message"]["content"][0]["text"].strip()
     print(time.time()-starttime)
-    print("flow change",answer)
     return answer

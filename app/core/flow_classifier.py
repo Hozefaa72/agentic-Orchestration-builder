@@ -7,7 +7,7 @@ async def flow_check(msg: str):
     model_id = "anthropic.claude-3-haiku-20240307-v1:0"
 
     system_instruction = (
-        "You are a classifier. "
+        "You are a classifier. if the user talks about ivf calculation then also ivf_success_calculation should be given"
         "Return ONLY one word exactly from this list: "
         "book_appointment, ivf_success_calculator, cost_and_package, None. "
         "If the question contains a name, number, pincode, or address → return None. "
@@ -27,7 +27,7 @@ async def flow_check(msg: str):
         modelId=model_id,
         messages=messages,
         inferenceConfig={
-            "maxTokens": 10,   # 🔑 Sirf ek token milega
+            "maxTokens": 10,   
             "temperature": 0.0,
         },
     )

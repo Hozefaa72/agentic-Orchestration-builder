@@ -1,5 +1,4 @@
 from app.core.boto3client import bot_generate
-import boto3
 import json
 
 
@@ -27,16 +26,8 @@ Output Format Example:
 ["<translated message 1>", "<translated message 2>"]
 """
 
-    client = boto3.client("bedrock-runtime")
-    model_id = "anthropic.claude-3-haiku-20240307-v1:0"
 
-    response = client.converse(
-        modelId=model_id,
-        messages=[{"role": "user", "content": [{"text": prompt}]}],
-        inferenceConfig={"maxTokens": 500, "temperature": 0.0},
-    )
-
-    answer = response["output"]["message"]["content"][0]["text"].strip()
+    answer = bot_generate(prompt,500)
     
     try:
         answer = json.loads(answer)  # will give list
