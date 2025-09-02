@@ -27,7 +27,7 @@ Output Format Example:
 """
 
 
-    answer = bot_generate(prompt,500)
+    answer = await bot_generate(prompt,500)
     
     try:
         answer = json.loads(answer)  # will give list
