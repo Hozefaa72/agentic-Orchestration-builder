@@ -55,7 +55,7 @@ async def appointment_flow(
             "3": {
                 "step_id": "3",
                 "message": "Please enter the OTP sent to your mobile number for verification",
-                "expected_input": "phone number",
+                "expected_input": "only ten digit phone number",
                 "valid_condition": r"^\d{10}$",
                 "action": "verify_otp_api",
                 "other_text": "Please enter a valid ten digit Phone Number",
@@ -180,7 +180,7 @@ async def appointment_flow(
     if step["step_id"] == "6":
         user = await User_Info.find_one(User_Info.thread_id == thread_id)
         for c in user.preffered_center:
-            if c["Clinic Name"].strip().lower() == user_message.strip().lower():
+            if (c["Clinic Name"].strip().lower() == user_message.strip().lower()) or (c["Clinic Name"].strip().lower().split('-')[1].strip()==user_message.strip().lower()) :
                 user.address = c["Address"]
                 user.City = c["City"]
                 user.State = c["State"]
