@@ -9,7 +9,7 @@ from app.schemas.user_schemas import UserLogin, UserSignup
 from datetime import datetime, timezone
 from pymongo.errors import PyMongoError
 
-auth_router = APIRouter()
+router = APIRouter()
 
 
 # class UserSignup(BaseModel):
@@ -23,7 +23,7 @@ auth_router = APIRouter()
 #     password: str
 
 
-@auth_router.post("/signup")
+@router.post("/signup")
 async def signup(user_data: UserSignup):
     try:
         existing_user = await get_user_by_email(user_data.email)
@@ -59,7 +59,7 @@ async def signup(user_data: UserSignup):
         )
 
 
-@auth_router.post("/login")
+@router.post("/login")
 async def login(user_data: UserLogin):
     try:
         if not user_data.email or not user_data.password:
@@ -88,7 +88,7 @@ async def login(user_data: UserLogin):
             status_code=500, detail="Internal server error during login"
         )
 
-@auth_router.get("/guest_token")
+@router.get("/guest_token")
 async def guest_token():
     try:
         print("inside guest token")

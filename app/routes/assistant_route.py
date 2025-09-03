@@ -17,12 +17,12 @@ import time
 from bson import ObjectId
 from app.models.threads import Thread
 
-assistant_router = APIRouter()
+router = APIRouter()
 websocket_manager = WebSocketManager()
 logger = logging.getLogger(__name__)
 
 
-@assistant_router.websocket("/ws")
+@router.websocket("/ws")
 async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
     logger.info(f"\U0001f7e1 Incoming WebSocket request with token: {token}")
     await websocket.accept()
