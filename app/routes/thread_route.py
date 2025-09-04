@@ -9,7 +9,7 @@ from app.schemas.thread_schemas import ThreadEditRequest
 from bson import ObjectId
 from pydantic import BaseModel
 
-chat_router = APIRouter()
+router = APIRouter()
 
 
 # class ThreadEditRequest(BaseModel):
@@ -22,7 +22,7 @@ class ChangeLangRequest(BaseModel):
     language: str
 
 
-@chat_router.delete("/delete_thread")
+@router.delete("/delete_thread")
 async def delete_threadd(
     thread_id: str, current_user: dict = Depends(get_current_user)
 ):
@@ -50,7 +50,7 @@ async def delete_threadd(
         )
 
 
-@chat_router.post("/edit_name")
+@router.post("/edit_name")
 async def edit_name(
     request: ThreadEditRequest, current_user: dict = Depends(get_current_user)
 ):
@@ -80,7 +80,7 @@ async def edit_name(
         )
 
 
-@chat_router.get("/get_threads")
+@router.get("/get_threads")
 async def get_user_threads(current_user: dict = Depends(get_current_user)):
     try:
         user_id = current_user.get("user_id")
@@ -109,7 +109,7 @@ async def get_user_threads(current_user: dict = Depends(get_current_user)):
         )
 
 
-@chat_router.get("/create_threads")
+@router.get("/create_threads")
 async def create_thread(lang:str,current_user: dict = Depends(get_current_user)):
     try:
         user_id = current_user.get("user_id")
@@ -148,7 +148,7 @@ async def create_thread(lang:str,current_user: dict = Depends(get_current_user))
         )
 
 
-@chat_router.get("/select_threads")
+@router.get("/select_threads")
 async def select_thread(thread_id: str, current_user: dict = Depends(get_current_user)):
     try:
         user_id = current_user.get("user_id")
@@ -188,7 +188,7 @@ async def select_thread(thread_id: str, current_user: dict = Depends(get_current
             detail="Internal server error while selecting thread"
         )
 
-@chat_router.post("/change_language")
+@router.post("/change_language")
 async def change_language(request: ChangeLangRequest,current_user: dict = Depends(get_current_user)):
     try:
         print("thread_id printing in language change router",request.thread_id)
