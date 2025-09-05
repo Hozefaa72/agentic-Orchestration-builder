@@ -3,7 +3,7 @@ from fastapi import HTTPException
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 
-PUBLIC_ENDPOINTS = ["/auth/login", "/auth/signup","/auth/guest_token", "/docs", "/openapi.json"]
+PUBLIC_ENDPOINTS = ["/api/auth/login", "/auth/signup","/api/auth/guest_token", "/docs", "/openapi.json"]
 
 
 class TrimmedAuthMiddleware(BaseHTTPMiddleware):
@@ -15,7 +15,8 @@ class TrimmedAuthMiddleware(BaseHTTPMiddleware):
     @staticmethod
     def extract_token(authorization: str) -> str:
         if authorization and authorization.startswith("Bearer "):
-            return authorization[len("Bearer ") :]
+            print("Authorization header:", authorization.split(" "))
+            return authorization.split(" ")[1]
         return None
 
     async def dispatch(self, request: Request, call_next):
@@ -33,6 +34,7 @@ class TrimmedAuthMiddleware(BaseHTTPMiddleware):
 
         try:
             token = TrimmedAuthMiddleware.extract_token(authorization)
+
 
             if token:
                 print(f"Extracted Token: {token}")

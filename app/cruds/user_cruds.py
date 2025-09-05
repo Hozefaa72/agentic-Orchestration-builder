@@ -86,7 +86,9 @@ async def create_user(user_data) -> User:
 
 async def get_user_by_email(email: str) -> Optional[User]:
     try:
+        print(email)
         user = await User.find_one(User.email == email)
+        print(user)
         return user
     except DocumentNotFound:
         logger.warning(f"User not found with email: {email}")

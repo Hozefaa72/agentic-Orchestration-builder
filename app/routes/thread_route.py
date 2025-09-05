@@ -84,14 +84,16 @@ async def edit_name(
 async def get_user_threads(current_user: dict = Depends(get_current_user)):
     try:
         user_id = current_user.get("user_id")
+        print(user_id)
         if not user_id:
             raise HTTPException(status_code=400, detail="User ID is missing or invalid")
-
+        print("before fetchng threads")
         threads = (
             await Thread.find(Thread.user_id == user_id)
             .sort(-Thread.timestamp)
             .to_list()
         )
+        print(threads)
         return {"threads": threads}
     except PyMongoError as db_err:
         raise HTTPException(
@@ -116,6 +118,7 @@ async def create_thread(lang:str,current_user: dict = Depends(get_current_user))
         session_id = current_user.get("session_id")
         if not user_id:
             raise HTTPException(status_code=400, detail="User ID is missing or invalid")
+        print("before creating thread")
 
         new_thread = Thread(
             user_id=user_id,

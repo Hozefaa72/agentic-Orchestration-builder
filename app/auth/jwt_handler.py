@@ -33,6 +33,7 @@ def token_response(token: str):
     try:
         if not token or not isinstance(token, str):
             raise HTTPException(status_code=422, detail="Invalid token")
+        token= "Bearer"+" "+token
         return {"access_token": token}
     except HTTPException as http_exc:
         raise http_exc

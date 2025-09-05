@@ -48,8 +48,8 @@ async def appointment_flow(
                 "expected_input": "name of the person",
                 "valid_condition": r"^[A-Za-z\s]{2,50}$",
                 "action": "send_otp_api",
-                "other_text": "Please share your name it is important for appointment booking step",
-                "final_text": "",
+                "other_text": ["We cannot continue with the booking without your name. Please enter your name to proceed","You can still explore information without giving your name. Would you like to know about topics below"],#"Please share your name it is important for appointment booking step",
+                "final_text": ["We cannot continue with the booking without your name. Please enter your name to proceed","You can still explore information without giving your name. Would you like to know about topics below"],
                 "next_step": "3",
             },
             "3": {
@@ -197,11 +197,17 @@ the expected input can also be in user selected language also
 User input: "{user_message}"
 Valid condition (regex): {step['valid_condition']}
 
-please return the response only this {step['message']}
-and if the {step['message']} is list then return that list in user language- {language}
-if the user enters invalid response then the expected input then use {step['other_text']} and if it enters invalid input three times then give him {step['final_text']} and in user language
 
- Important: Respond ONLY in valid JSON, nothing else.
+Instructions:
+- Always return ONLY {step['message']} as bot_response if the input is valid.
+- If {step['message']} is a list, return that list translated into {language}.
+- If the user enters an invalid response compared to the expected input:
+  → return only {step['other_text']} (translated into {language}).
+- If the {user_message} states that it  doesn’t want to share his/her information:
+  → return only {step['final_text']} (translated into {language}).
+- Do NOT send both {step['other_text']} and {step['final_text']} together.
+- Always respond strictly in valid JSON, no extra text.
+
 Format:
 {{
   "status": "VALID" or "INVALID",
@@ -219,7 +225,7 @@ Rules:
     response = client.converse(
         modelId=model_id,
         messages=[{"role": "user", "content": [{"text": prompt}]}],
-        inferenceConfig={"maxTokens": 200, "temperature": 0},
+        inferenceConfig={"maxTokens": 500, "temperature": 0},
     )
 
     llm_answer = response["output"]["message"]["content"][0]["text"].strip()

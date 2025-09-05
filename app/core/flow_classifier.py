@@ -7,9 +7,11 @@ async def flow_check(msg: str):
     model_id = "anthropic.claude-3-haiku-20240307-v1:0"
 
     system_instruction = (
-        "You are a classifier. if the user talks about ivf calculation then also ivf_success_calculation should be given"
+        "You are a classifier. "
+        "if the user talks about ivf calculation then also ivf_success_calculation should be given"
+        "if the user talks about improvement of anything related ivf and it impacts lifetyle then call the class Lifestyle_and_Preparations"
         "Return ONLY one word exactly from this list: "
-        "book_appointment, ivf_success_calculator, cost_and_package, None. "
+        "book_appointment, ivf_success_calculator,Lifestyle_and_Preparations,cost_and_package, None. "
         "If the question contains a name, number, pincode, or address → return None. "
         "No explanation, no extra text."
     )

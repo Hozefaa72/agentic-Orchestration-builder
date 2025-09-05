@@ -13,7 +13,7 @@ from app.core.flow_classifier import flow_check
 from fastapi import Query
 from app.auth.jwt_handler import decode_jwt
 import json
-import time
+from app.core.lifestyleandpreparations import lifestyleAndPreparations
 from bson import ObjectId
 from app.models.threads import Thread
 
@@ -28,6 +28,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
     await websocket.accept()
 
     try:
+        token=token.split(' ')[1]
         current_user = decode_jwt(token)
         logger.info(f"\u2705 Authenticated User: {current_user}")
     except Exception as e:
@@ -167,7 +168,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
-                if (
+                elif (
                     data.get("subtype") == "ivf_success_calculator"
                     or flow_id == "ivf_success_calculator"
                 ):
@@ -192,6 +193,15 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                             }
                         )
                     )
+                elif (data.get("subtype")=="Lifestyle_and_Preparations") or (flow_id=="Lifestyle_and_Preparations"):
+                    response= await lifestyleAndPreparations(language)
+                    await websocket.send_text(json.dumps({"type": "message", "text":response[0],"contentType":"Lifestyle_and_Preparations"}))
+                    await asyncio.sleep(1)
+                    await websocket.send_text(json.dumps({"type": "message", "text":response[1], "contentType":None}))
+                    await asyncio.sleep(1)
+                    await websocket.send_text(json.dumps({"type": "message", "text":response[2], "contentType":"book_appointment"}))
+                else:
+                    continue
 
                 thread_name = await get_thread_by_name(thread_id)
                 if thread_name == "New Chat":
