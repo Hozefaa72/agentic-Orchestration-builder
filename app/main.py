@@ -15,7 +15,7 @@ configs = [
     configure_database
 ]
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI()
 
 for config in configs:
     config(app)
