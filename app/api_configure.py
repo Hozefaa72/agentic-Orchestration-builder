@@ -1,5 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.core.events import create_start_app_handler, create_stop_app_handler
 from app.routes.index import router
 from app.config import ENV_PROJECT
 from app.middleware.middleware import TrimmedAuthMiddleware
@@ -23,3 +24,7 @@ def configure_app(app: FastAPI):
     )
 
     app.include_router(router, prefix="/api")
+
+def configure_database(app: FastAPI):
+    app.add_event_handler("startup", create_start_app_handler(app))
+    app.add_event_handler("shutdown", create_stop_app_handler(app))
