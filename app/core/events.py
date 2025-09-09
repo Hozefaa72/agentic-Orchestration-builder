@@ -1,9 +1,16 @@
+from beanie import init_beanie
 from fastapi import FastAPI
 from loguru import logger
+from app.config import ENV_PROJECT
 from app.database import mongodb
 # from app.modules.async_redis_consumer import aredis, start_redis_consumer
 import asyncio
 from typing import Callable
+
+from app.models.threads import Thread
+from app.models.message import Message
+from app.models.users import User
+from app.models.user_info import User_Info
 
 listen_task = None
 
@@ -14,6 +21,16 @@ def create_start_app_handler(app: FastAPI) -> Callable:
         try:
             await mongodb.client.admin.command("ping")
             logger.info("MongoDB Connected.")
+
+            # ✅ Get the DB name safely
+            db_name = getattr(ENV_PROJECT, "MONGO_DB_NAME", "IVF_CHATBOT") or "IVF_CHATBOT"
+            logger.info(f"Using DB: {db_name}")
+
+            # ✅ Initialize Beanie
+            await init_beanie(
+                database=mongodb.client[db_name],
+                document_models=[Thread, Message, User, User_Info],
+            )
 
             # await start_redis()
             # logger.info("Redis Connected.")
