@@ -12,7 +12,7 @@ async def flow_check(msg: str):
         "if the user talks about improvement of anything related ivf and it impacts lifetyle then call the class Lifestyle_and_Preparations"
         "if the user talks about loan or emi options then classify it as loan_and_emi "
         "Return ONLY one word exactly from this list: "
-        "book_appointment, ivf_success_calculator,Lifestyle_and_Preparations,cost_and_package,loan_and_emi, None. "
+        "book_appointment, ivf_success_calculator,Lifestyle_and_Preparations,cost_and_package,loan_and_emi,emergency_contact,None. "
         "If the question contains a name, number, pincode, or address → return None. "
         "No explanation, no extra text."
     )

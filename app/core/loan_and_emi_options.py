@@ -3,7 +3,7 @@ import json
 
 
 async def loan_emi_option(user_message,language: str):
-    print("user language", language)
+    print("in loan emi flow")
 
     # Explicitly keep messages as a list of separate strings
     messages = [
@@ -15,7 +15,8 @@ async def loan_emi_option(user_message,language: str):
     prompt = f"""
 You are a helpful assistant. 
 user message={user_message} 
-If the input messages are about loan or EMI options, translate each of them into {language}.  
+If the input messages are about loan or EMI options, translate each of them into {language}. 
+if the user talks about wrong thing regarding bank or loan and ivf  then also give  ["I can't help you on this. Is there anything else I can do?"]
 Otherwise, instead of translation, return the fixed response:
 ["I can't help you on this. Is there anything else I can do?"]
 

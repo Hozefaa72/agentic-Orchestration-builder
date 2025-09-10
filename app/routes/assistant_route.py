@@ -17,6 +17,7 @@ from app.core.lifestyleandpreparations import lifestyleAndPreparations
 from bson import ObjectId
 from app.models.threads import Thread
 from app.core.loan_and_emi_options import loan_emi_option
+from app.core.emergencyContact import EmergencyContact
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -29,7 +30,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
     await websocket.accept()
 
     try:
-        token=token.split(' ')[1]
+        token = token.split(" ")[1]
         current_user = decode_jwt(token)
         logger.info(f"\u2705 Authenticated User: {current_user}")
     except Exception as e:
@@ -194,20 +195,81 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                             }
                         )
                     )
-                elif (data.get("subtype")=="Lifestyle_and_Preparations") or (flow_id=="Lifestyle_and_Preparations"):
-                    response= await lifestyleAndPreparations(language)
-                    await websocket.send_text(json.dumps({"type": "message", "text":response[0],"contentType":"Lifestyle_and_Preparations"}))
+                elif (data.get("subtype") == "Lifestyle_and_Preparations") or (
+                    flow_id == "Lifestyle_and_Preparations"
+                ):
+                    response = await lifestyleAndPreparations(language)
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "message",
+                                "text": response[0],
+                                "contentType": "Lifestyle_and_Preparations",
+                            }
+                        )
+                    )
                     await asyncio.sleep(1)
-                    await websocket.send_text(json.dumps({"type": "message", "text":response[1], "contentType":None}))
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "message",
+                                "text": response[1],
+                                "contentType": None,
+                            }
+                        )
+                    )
                     await asyncio.sleep(1)
-                    await websocket.send_text(json.dumps({"type": "message", "text":response[2], "contentType":"book_appointment"}))
-                elif ((data.get("subtype")=="loan_and_emi") or (flow_id=="loan_and_emi")):
-                    response= await loan_emi_option(thread_id, language)
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "message",
+                                "text": response[2],
+                                "contentType": "book_appointment",
+                            }
+                        )
+                    )
+                elif (data.get("subtype") == "loan_and_emi") or (
+                    flow_id == "loan_and_emi"
+                ):
+                    response = await loan_emi_option(content, language)
                     for i in range(len(response)):
-                        await websocket.send_text(json.dumps({"type": "message", "text":response[i], "contentType":"loan_and_emi" if i == 2 else None}))
-                elif ((data.get("subtype")=="not_defined") or (flow_id=="not_defined")):
-                    response= await end_flow(thread_id, language)
-                    await websocket.send_text(json.dumps({"type": "message", "text":response, "contentType":"end_flow"}))
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response[i],
+                                    "contentType": "loan_and_emi" if i == 2 else None,
+                                }
+                            )
+                        )
+                elif (data.get("subtype") == "emergency_contact") or (
+                    flow_id == "emergency_contact"
+                ):
+                    response = await EmergencyContact(content, language)
+                    for i in range(len(response)):
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response[i],
+                                    "contentType":
+                                        "emergency_contact" ,
+                                }
+                            )
+                        )
+                elif (data.get("subtype") == "not_defined") or (
+                    flow_id == "not_defined"
+                ):
+                    response = await end_flow(thread_id, language)
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "message",
+                                "text": response,
+                                "contentType": "end_flow",
+                            }
+                        )
+                    )
                 else:
                     continue
 
