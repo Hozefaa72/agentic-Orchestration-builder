@@ -48,7 +48,7 @@ async def appointment_flow(
                 "expected_input": "name of the person",
                 "valid_condition": r"^[A-Za-z\s]{2,50}$",
                 "action": "send_otp_api",
-                "other_text": ["We cannot continue with the booking without your name. Please enter your name to proceed","You can still explore information without giving your name. Would you like to know about topics below"],#"Please share your name it is important for appointment booking step",
+                "other_text": "Sorry, I couldn’t recognize that as a name. Could you please re-enter your full name Let's try again",#"Please share your name it is important for appointment booking step",
                 "final_text": ["We cannot continue with the booking without your name. Please enter your name to proceed","You can still explore information without giving your name. Would you like to know about topics below"],
                 "next_step": "3",
             },
@@ -175,13 +175,13 @@ async def appointment_flow(
                 await thread.save()
             return response, "centers"
         else:
-            return "Postal code not found or invalid", None
+            return ["Sorry, the Pincode is invalid"," Please enter a valid pincode to check clinic availability near you"], None
 
     if step["step_id"] == "6":
         user = await User_Info.find_one(User_Info.thread_id == thread_id)
         for c in user.preffered_center:
             if (c["Clinic Name"].strip().lower() == user_message.strip().lower()) or (c["Clinic Name"].strip().lower().split('-')[1].strip()==user_message.strip().lower()) :
-                user.address = c["Address"]
+                user.preffered_center_address = c["Address"]
                 user.City = c["City"]
                 user.State = c["State"]
                 await user.save()
@@ -207,6 +207,7 @@ Instructions:
   → return only {step['final_text']} (translated into {language}).
 - Do NOT send both {step['other_text']} and {step['final_text']} together.
 - Always respond strictly in valid JSON, no extra text.
+ 
 
 Format:
 {{
@@ -268,7 +269,7 @@ Rules:
                 user_info = {
                     "Date": user.checkup_date,
                     "Time": user.checkup_time_slot,
-                    "Address": user.address,
+                    "Address": user.preffered_center_address,
                     "City": user.City,
                     "State": user.State,
                 }

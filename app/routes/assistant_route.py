@@ -16,6 +16,7 @@ import json
 from app.core.lifestyleandpreparations import lifestyleAndPreparations
 from bson import ObjectId
 from app.models.threads import Thread
+from app.core.loan_and_emi_options import loan_emi_option
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -200,6 +201,13 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                     await websocket.send_text(json.dumps({"type": "message", "text":response[1], "contentType":None}))
                     await asyncio.sleep(1)
                     await websocket.send_text(json.dumps({"type": "message", "text":response[2], "contentType":"book_appointment"}))
+                elif ((data.get("subtype")=="loan_and_emi") or (flow_id=="loan_and_emi")):
+                    response= await loan_emi_option(thread_id, language)
+                    for i in range(len(response)):
+                        await websocket.send_text(json.dumps({"type": "message", "text":response[i], "contentType":"loan_and_emi" if i == 2 else None}))
+                elif ((data.get("subtype")=="not_defined") or (flow_id=="not_defined")):
+                    response= await end_flow(thread_id, language)
+                    await websocket.send_text(json.dumps({"type": "message", "text":response, "contentType":"end_flow"}))
                 else:
                     continue
 
