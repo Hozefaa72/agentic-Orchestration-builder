@@ -22,8 +22,8 @@ async def IVFSuccessRate(user_message, language: str):
                 - Translate only the text fields (`first_text`, `second_heading`, `second_text`) into {language},  
                 but keep all numbers/digits exactly the same.  
                 - Translate the second string in the list into {language}.  
-                - If the user asks irrelevant or unwanted questions, return:  
-                ["This question is not related. Is there anything else I can do?"]  
+                - if the user talks about wrong thing or any irrelavant questions regarding the success rate or failure rate or failures of indira ivf or anything about indira ivf then:  
+                ["I can't help you on this. Is there anything else I can do?"]
 
                 ⚠️ IMPORTANT:  
                 - Do not add explanations, introductions, or extra text.  

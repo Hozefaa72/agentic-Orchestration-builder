@@ -264,41 +264,59 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                     flow_id == "success_rate"
                 ):
                     response = await IVFSuccessRate(content, language)
-                    await websocket.send_text(
-                            json.dumps(
-                                {
-                                    "type": "message",
-                                    "text": response[0],
-                                    "contentType":
-                                        "success_rate" ,
-                                }
+                    if len(response)==2:
+                        await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[0],
+                                        "contentType":
+                                            "success_rate" ,
+                                    }
+                                )
                             )
-                        )
-                    await asyncio.sleep(1)
-                    await websocket.send_text(
-                            json.dumps(
-                                {
-                                    "type": "message",
-                                    "text": response[1],
-                                    "contentType":
-                                        "ivf_calculate" ,
-                                }
+                        await asyncio.sleep(1)
+                        await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[1],
+                                        "contentType":
+                                            "ivf_calculate" ,
+                                    }
+                                )
                             )
-                        )
+                    else:
+                        for i in response:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": i,
+                                        "contentType":
+                                            None
+                                    }
+                                )
+                            )
+                            await asyncio.sleep(1)
                     
-                elif (data.get("subtype") == "not_defined") or (
-                    flow_id == "not_defined"
+                elif (data.get("subtype") == "out_of_context") or (
+                    flow_id == "out_of_context"
                 ):
                     response = await end_flow(thread_id, language)
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "type": "message",
-                                "text": response,
-                                "contentType": "end_flow",
-                            }
+                    for i in range(len(response)):
+                        print(response[i])
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response[i],
+                                    "contentType":
+                                        "out_of_context" if i == 1 else None ,
+                                }
+                            )
                         )
-                    )
+                        await asyncio.sleep(1)
                 else:
                     continue
 
