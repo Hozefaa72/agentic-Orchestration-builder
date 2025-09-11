@@ -23,6 +23,7 @@ class Thread(Document):
     language:Optional[str] = None
     flow_id:Optional[str] = None
     step_id:Optional[str] = None
+    step_count:Optional[int] = 0
     location: Optional[str] = ""
     country: Optional[str] = ""
     cache: Optional[Cache] = Field(default_factory=Cache)

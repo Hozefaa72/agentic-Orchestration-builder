@@ -12,6 +12,8 @@ async def appointment_flow(
 
     thread_obj_id = ObjectId(thread_id)
     thread = await Thread.find_one(Thread.id == thread_obj_id)
+    step_count=thread.step_count
+    print("step_count",step_count)
 
     if thread and thread.step_id:
         step_id = thread.step_id
@@ -58,8 +60,8 @@ async def appointment_flow(
                 "expected_input": "only ten digit phone number",
                 "valid_condition": r"^\d{10}$",
                 "action": "verify_otp_api",
-                "other_text": "Please enter a valid ten digit Phone Number",
-                "final_text": "",
+                "other_text": "Please enter a valid ten digit Phone Number it is important for booking an appointment",
+                "final_text": ["We cannot continue with the booking without your phone number. Please enter your number to proceed","You can still explore information without giving your number. Would you like to know about topics below"],
                 "next_step": "4",
             },
             "4": {
@@ -85,7 +87,7 @@ async def appointment_flow(
                     "Sorry, the Pincode is invalid",
                     " Please enter a valid pincode to check clinic availability near you",
                 ],
-                "final_text": "",
+                "final_text": ["We cannot proceed with the booking process without these details. Please share your pincode to continue","You can enter your city or area name instead"],
                 "next_step": "6",
             },
             "6": {
@@ -174,8 +176,8 @@ async def appointment_flow(
                 thread.step_id = next_step
                 await thread.save()
             return response, "centers"
-        else:
-            return ["Sorry, the Pincode is invalid"," Please enter a valid pincode to check clinic availability near you"], None
+        #else:
+            #return ["Sorry, the Pincode is invalid"," Please enter a valid pincode to check clinic availability near you"], None
 
     if step["step_id"] == "6":
         user = await User_Info.find_one(User_Info.thread_id == thread_id)
@@ -238,7 +240,13 @@ Rules:
         # fallback if model doesn't output strict JSON
         llm_json = {"status": "INVALID", "bot_response": step["message"]}
 
+
     # Final decision
+    if llm_json.get("status") == "INVALID":
+        if thread:
+            thread.step_count+=1
+            await thread.save()
+
     if llm_json.get("status") == "VALID":
         next_step = step["next_step"]
         print(next_step)
@@ -279,6 +287,7 @@ Rules:
         if thread:
             thread.flow_id = flow_id
             thread.step_id = next_step
+            thread.step_count = 1
             await thread.save()
 
         # return structured JSON (with bot response filled from flow)
@@ -297,5 +306,6 @@ Rules:
             next_step = step["next_step"]
             thread.flow_id = flow_id
             thread.step_id = next_step
+            thread.step_count = 1
             await thread.save()
         return llm_json.get("bot_response"), None

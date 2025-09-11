@@ -18,6 +18,7 @@ from bson import ObjectId
 from app.models.threads import Thread
 from app.core.loan_and_emi_options import loan_emi_option
 from app.core.emergencyContact import EmergencyContact
+from app.core.ivfSuccessRate import IVFSuccessRate
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -242,6 +243,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
+                        await asyncio.sleep(1)
                 elif (data.get("subtype") == "emergency_contact") or (
                     flow_id == "emergency_contact"
                 ):
@@ -257,6 +259,33 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
+                        await asyncio.sleep(1)
+                elif (data.get("subtype") == "success_rate") or (
+                    flow_id == "success_rate"
+                ):
+                    response = await IVFSuccessRate(content, language)
+                    await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response[0],
+                                    "contentType":
+                                        "success_rate" ,
+                                }
+                            )
+                        )
+                    await asyncio.sleep(1)
+                    await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response[1],
+                                    "contentType":
+                                        "ivf_calculate" ,
+                                }
+                            )
+                        )
+                    
                 elif (data.get("subtype") == "not_defined") or (
                     flow_id == "not_defined"
                 ):
