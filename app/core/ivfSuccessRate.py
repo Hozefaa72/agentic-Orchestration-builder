@@ -19,11 +19,11 @@ async def IVFSuccessRate(user_message, language: str):
                 User message: {user_message}  
 
                 Your task:  
-                - If the user asks about success rate note only sucess rate not failure rate, couples, or related information, translate the messages into {language}.  
+                - If the user asks about success rat or successful cases, couples, or related information, translate the messages into {language}.  
                 - Translate only the text fields (`first_text`, `second_heading`, `second_text`) into {language},  
                 but keep all numbers/digits exactly the same.  
                 - Translate the second string in the list into {language}.  
-                - if the user talks about wrong thing or any irrelavant questions regarding the success rate or failure rate or failures of indira ivf or anything about indira ivf then:  
+                - if the user talks about wrong thing or any irrelavant questions regarding the success rate or  if he asks about failure rate or failures of indira ivf or anything about indira ivf then:  
                 ["I can't help you on this. Is there anything else I can do?"]
 
                 ⚠️ IMPORTANT:  
@@ -33,10 +33,8 @@ async def IVFSuccessRate(user_message, language: str):
                 Input Messages:  
                 {messages}  
 
-                Expected Output:  
-                [
-                dict,""
-                ]
+                Output Format Example:
+                [dict, "<translated message 1>"]
             """
 
     answer = await bot_generate(prompt, 500)
