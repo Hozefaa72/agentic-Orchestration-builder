@@ -18,6 +18,8 @@ from bson import ObjectId
 from app.models.threads import Thread
 from app.core.loan_and_emi_options import loan_emi_option
 from app.core.emergencyContact import EmergencyContact
+from app.core.ivfSuccessRate import IVFSuccessRate
+from app.core.consent_flow import ConsentFlow
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -242,6 +244,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
+                        await asyncio.sleep(1)
                 elif (data.get("subtype") == "emergency_contact") or (
                     flow_id == "emergency_contact"
                 ):
@@ -257,19 +260,106 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
-                elif (data.get("subtype") == "not_defined") or (
-                    flow_id == "not_defined"
+                        await asyncio.sleep(1)
+                elif (data.get("subtype") == "success_rate") or (
+                    flow_id == "success_rate"
+                ):
+                    response = await IVFSuccessRate(content, language)
+                    if len(response)==2:
+                        await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[0],
+                                        "contentType":
+                                            "success_rate" ,
+                                    }
+                                )
+                            )
+                        await asyncio.sleep(1)
+                        await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[1],
+                                        "contentType":
+                                            "ivf_calculate" ,
+                                    }
+                                )
+                            )
+                    else:
+                        for i in response:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": i,
+                                        "contentType":
+                                            None
+                                    }
+                                )
+                            )
+                            await asyncio.sleep(1)
+                    
+                elif (data.get("subtype") == "out_of_context") or (
+                    flow_id == "out_of_context"
                 ):
                     response = await end_flow(thread_id, language)
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "type": "message",
-                                "text": response,
-                                "contentType": "end_flow",
-                            }
+                    for i in range(len(response)):
+                        print(response[i])
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response[i],
+                                    "contentType":
+                                        "out_of_context" if i == 1 else None ,
+                                }
+                            )
                         )
-                    )
+                        await asyncio.sleep(1)
+                elif (data.get("subtype") =="legal_consent") or (flow_id =="legal_consent"):
+                    response,contentType=await ConsentFlow(thread_id, flow_id, step_id, language, content)
+                    if isinstance(response, list) and contentType == "out_of_context":
+                        for i in range(len(response)):
+                            print(response[i])
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[i],
+                                        "contentType":
+                                            "out_of_context" if i == 0 else None ,
+                                    }
+                                )
+                            )
+                            await asyncio.sleep(1)
+                    elif isinstance(response, list):
+                        for i in response:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": i,
+                                        "contentType":
+                                            None
+                                    }
+                                )
+                            )
+                            await asyncio.sleep(1)
+                    else:
+                        # handle single response or centers separately if needed
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response,
+                                    "contentType": contentType,
+                                }
+                            )
+                        )
+
+
                 else:
                     continue
 
