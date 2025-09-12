@@ -20,4 +20,5 @@ dependencies = [
     "motor>=3.3.1",
     "loguru>=0.7.2",
     "redis>=5.0.0", 
+    "openai>=1.107.1"
 ]

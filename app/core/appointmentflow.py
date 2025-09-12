@@ -1,4 +1,5 @@
 import boto3
+from app.llm_utils import ask_openai_validation_assistant, update_token_usage
 from app.models.threads import Thread
 from app.models.user_info import User_Info, AppointmentStatus
 from app.core.ivf_centers import find_nearest_by_postal
@@ -220,16 +221,18 @@ Rules:
 - If not valid → status = "INVALID" and bot_response = re-ask current step politely in {language}.
 """
 
-    client = boto3.client("bedrock-runtime")
-    model_id = "anthropic.claude-3-haiku-20240307-v1:0"
+    # client = boto3.client("bedrock-runtime")
+    # model_id = "anthropic.claude-3-haiku-20240307-v1:0"
 
-    response = client.converse(
-        modelId=model_id,
-        messages=[{"role": "user", "content": [{"text": prompt}]}],
-        inferenceConfig={"maxTokens": 500, "temperature": 0},
-    )
+    # response = client.converse(
+    #     modelId=model_id,
+    #     messages=[{"role": "user", "content": [{"text": prompt}]}],
+    #     inferenceConfig={"maxTokens": 500, "temperature": 0},
+    # )
 
-    llm_answer = response["output"]["message"]["content"][0]["text"].strip()
+    # llm_answer = response["output"]["message"]["content"][0]["text"].strip()
+
+    llm_answer = await ask_openai_validation_assistant(prompt)
     print("raw llm answer:", llm_answer)
 
     try:
