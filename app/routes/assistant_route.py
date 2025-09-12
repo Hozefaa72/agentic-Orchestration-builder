@@ -126,7 +126,6 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
-                        await asyncio.sleep(1)
                         await websocket.send_text(
                             json.dumps(
                                 {
@@ -147,8 +146,6 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                     }
                                 )
                             )
-                            await asyncio.sleep(1)
-
                     elif isinstance(response, list) and contentType != "centers":
                         for message in response:
                             await websocket.send_text(
@@ -160,7 +157,6 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                     }
                                 )
                             )
-                            await asyncio.sleep(1)
                     else:
                         # handle single response or centers separately if needed
                         await websocket.send_text(
@@ -183,9 +179,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                     await websocket.send_text(
                         json.dumps({"type": "message", "text": message[0]})
                     )
-
                     # Small delay if you want them to appear one after the other
-                    await asyncio.sleep(1)
                     print(response[1])
                     # Second message
                     await websocket.send_text(
@@ -210,7 +204,6 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                             }
                         )
                     )
-                    await asyncio.sleep(1)
                     await websocket.send_text(
                         json.dumps(
                             {
@@ -220,7 +213,6 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                             }
                         )
                     )
-                    await asyncio.sleep(1)
                     await websocket.send_text(
                         json.dumps(
                             {
@@ -244,7 +236,6 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
-                        await asyncio.sleep(1)
                 elif (data.get("subtype") == "emergency_contact") or (
                     flow_id == "emergency_contact"
                 ):
@@ -255,52 +246,40 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 {
                                     "type": "message",
                                     "text": response[i],
-                                    "contentType":
-                                        "emergency_contact" ,
+                                    "contentType": "emergency_contact",
                                 }
                             )
                         )
-                        await asyncio.sleep(1)
                 elif (data.get("subtype") == "success_rate") or (
                     flow_id == "success_rate"
                 ):
                     response = await IVFSuccessRate(content, language)
-                    if len(response)==2:
+                    if len(response) == 2:
                         await websocket.send_text(
-                                json.dumps(
-                                    {
-                                        "type": "message",
-                                        "text": response[0],
-                                        "contentType":
-                                            "success_rate" ,
-                                    }
-                                )
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response[0],
+                                    "contentType": "success_rate",
+                                }
                             )
-                        await asyncio.sleep(1)
+                        )
                         await websocket.send_text(
-                                json.dumps(
-                                    {
-                                        "type": "message",
-                                        "text": response[1],
-                                        "contentType":
-                                            "ivf_calculate" ,
-                                    }
-                                )
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response[1],
+                                    "contentType": "ivf_calculate",
+                                }
                             )
+                        )
                     else:
                         for i in response:
                             await websocket.send_text(
                                 json.dumps(
-                                    {
-                                        "type": "message",
-                                        "text": i,
-                                        "contentType":
-                                            None
-                                    }
+                                    {"type": "message", "text": i, "contentType": None}
                                 )
                             )
-                            await asyncio.sleep(1)
-                    
                 elif (data.get("subtype") == "out_of_context") or (
                     flow_id == "out_of_context"
                 ):
@@ -312,14 +291,16 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 {
                                     "type": "message",
                                     "text": response[i],
-                                    "contentType":
-                                        "out_of_context" if i == 1 else None ,
+                                    "contentType": "out_of_context" if i == 1 else None,
                                 }
                             )
                         )
-                        await asyncio.sleep(1)
-                elif (data.get("subtype") =="legal_consent") or (flow_id =="legal_consent"):
-                    response,contentType=await ConsentFlow(thread_id, flow_id, step_id, language, content)
+                elif (data.get("subtype") == "legal_consent") or (
+                    flow_id == "legal_consent"
+                ):
+                    response, contentType = await ConsentFlow(
+                        thread_id, flow_id, step_id, language, content
+                    )
                     if isinstance(response, list) and contentType == "out_of_context":
                         for i in range(len(response)):
                             print(response[i])
@@ -328,25 +309,19 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                     {
                                         "type": "message",
                                         "text": response[i],
-                                        "contentType":
-                                            "out_of_context" if i == 0 else None ,
+                                        "contentType": (
+                                            "out_of_context" if i == 0 else None
+                                        ),
                                     }
                                 )
                             )
-                            await asyncio.sleep(1)
                     elif isinstance(response, list):
                         for i in response:
                             await websocket.send_text(
                                 json.dumps(
-                                    {
-                                        "type": "message",
-                                        "text": i,
-                                        "contentType":
-                                            None
-                                    }
+                                    {"type": "message", "text": i, "contentType": None}
                                 )
                             )
-                            await asyncio.sleep(1)
                     else:
                         # handle single response or centers separately if needed
                         await websocket.send_text(
@@ -358,8 +333,6 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
-
-
                 else:
                     continue
 
@@ -372,7 +345,6 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                     else:
                         chat_name = "General Enquiry"
                     await update_thread_name(thread_id, chat_name)
-
                 # await websocket.send_text(
                 #         json.dumps({"type": "message", "text": response})
                 #     )

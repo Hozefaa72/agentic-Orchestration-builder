@@ -5,6 +5,7 @@ from app.models.user_info import User_Info, AppointmentStatus
 from app.core.ivf_centers import find_nearest_by_postal
 from bson import ObjectId
 import json
+import re
 
 
 async def appointment_flow(
@@ -13,13 +14,14 @@ async def appointment_flow(
 
     thread_obj_id = ObjectId(thread_id)
     thread = await Thread.find_one(Thread.id == thread_obj_id)
-    step_count=thread.step_count
-    print("step_count",step_count)
+    step_count = thread.step_count
+    print("step_count", step_count)
 
     if thread and thread.step_id:
         step_id = thread.step_id
     elif not step_id:
         step_id = "1"
+        user_message = "I want to Book an Appointment"
 
     print(
         " Current step:",
@@ -38,7 +40,7 @@ async def appointment_flow(
             "1": {
                 "step_id": "1",
                 "message": "To book appointment, please share your name ",
-                "expected_input": "name",
+                "expected_input": "User wants to book an appointment or book free Consultation",
                 "valid_condition": "",
                 "action": None,
                 "other_text": "",
@@ -51,8 +53,11 @@ async def appointment_flow(
                 "expected_input": "name of the person",
                 "valid_condition": r"^[A-Za-z\s]{2,50}$",
                 "action": "send_otp_api",
-                "other_text": "Sorry, I couldn’t recognize that as a name. Could you please re-enter your full name Let's try again",#"Please share your name it is important for appointment booking step",
-                "final_text": ["We cannot continue with the booking without your name. Please enter your name to proceed","You can still explore information without giving your name. Would you like to know about topics below"],
+                "other_text": "Sorry, I couldn’t recognize that as a name. Could you please re-enter your full name Let's try again",  # "Please share your name it is important for appointment booking step",
+                "final_text": [
+                    "We cannot continue with the booking without your name. Please enter your name to proceed",
+                    "You can still explore information without giving your name. Would you like to know about topics below",
+                ],
                 "next_step": "3",
             },
             "3": {
@@ -62,7 +67,10 @@ async def appointment_flow(
                 "valid_condition": r"^\d{10}$",
                 "action": "verify_otp_api",
                 "other_text": "Please enter a valid ten digit Phone Number it is important for booking an appointment",
-                "final_text": ["We cannot continue with the booking without your phone number. Please enter your number to proceed","You can still explore information without giving your number. Would you like to know about topics below"],
+                "final_text": [
+                    "We cannot continue with the booking without your phone number. Please enter your number to proceed",
+                    "You can still explore information without giving your number. Would you like to know about topics below",
+                ],
                 "next_step": "4",
             },
             "4": {
@@ -88,7 +96,10 @@ async def appointment_flow(
                     "Sorry, the Pincode is invalid",
                     " Please enter a valid pincode to check clinic availability near you",
                 ],
-                "final_text": ["We cannot proceed with the booking process without these details. Please share your pincode to continue","You can enter your city or area name instead"],
+                "final_text": [
+                    "We cannot proceed with the booking process without these details. Please share your pincode to continue",
+                    "You can enter your city or area name instead",
+                ],
                 "next_step": "6",
             },
             "6": {
@@ -166,7 +177,13 @@ async def appointment_flow(
 
     # print(msg)
     if step["step_id"] == "5":
-        response = find_nearest_by_postal(user_message)
+        match = re.search(r"\b\d{6}\b", user_message)
+        if match:
+            pincode = match.group(0)  # the actual 6-digit code
+            response = find_nearest_by_postal(pincode)  # pass only the pincode
+        else:
+            response = None
+
         if response:
             user = await User_Info.find_one(User_Info.thread_id == thread_id)
             user.preffered_center = response
@@ -177,13 +194,16 @@ async def appointment_flow(
                 thread.step_id = next_step
                 await thread.save()
             return response, "centers"
-        #else:
-            #return ["Sorry, the Pincode is invalid"," Please enter a valid pincode to check clinic availability near you"], None
+        # else:
+        # return ["Sorry, the Pincode is invalid"," Please enter a valid pincode to check clinic availability near you"], None
 
     if step["step_id"] == "6":
         user = await User_Info.find_one(User_Info.thread_id == thread_id)
         for c in user.preffered_center:
-            if (c["Clinic Name"].strip().lower() == user_message.strip().lower()) or (c["Clinic Name"].strip().lower().split('-')[1].strip()==user_message.strip().lower()) :
+            if (c["Clinic Name"].strip().lower() == user_message.strip().lower()) or (
+                c["Clinic Name"].strip().lower().split("-")[1].strip()
+                == user_message.strip().lower()
+            ):
                 user.preffered_center_address = c["Address"]
                 user.City = c["City"]
                 user.State = c["State"]
@@ -199,18 +219,18 @@ Step: {step_id}, Expecting: {step['expected_input']}
 the expected input can also be in user selected language also 
 User input: "{user_message}"
 Valid condition (regex): {step['valid_condition']}
+bot_response must ALWAYS be written in {language}, regardless of input language or system language.
 
 
 Instructions:
-- Always return ONLY {step['message']} as bot_response if the input is valid.
-- If {step['message']} is a list, return that list translated into {language}.
-- If the user enters an invalid response compared to the expected input:
-  → return only {step['other_text']} (translated into {language}).
-- If the {user_message} states that it  doesn’t want to share his/her information:
-  → return only {step['final_text']} (translated into {language}).
-- Do NOT send both {step['other_text']} and {step['final_text']} together.
-- Always respond strictly in valid JSON, no extra text.
- 
+- First, detect intent:
+  If the {user_message} expresses a refusal to provide the requested information 
+  (examples: "I don’t want to share", "prefer not to say", "skip", "NA", "no quiero compartir", "je ne veux pas partager", etc. in ANY language),
+  then → return only {step['final_text']} (translated into {language}), with status = "INVALID".
+- Otherwise, if the input matches {step['valid_condition']} (regex + meaning check), 
+  then → status = "VALID" and bot_response = {step['message']} (translated if needed).
+- Otherwise → status = "INVALID" and bot_response = {step['other_text']} (translated if needed).
+-and also in same the format if it is string then string and if its is list of string then list of string
 
 Format:
 {{
@@ -243,11 +263,10 @@ Rules:
         # fallback if model doesn't output strict JSON
         llm_json = {"status": "INVALID", "bot_response": step["message"]}
 
-
     # Final decision
     if llm_json.get("status") == "INVALID":
         if thread:
-            thread.step_count+=1
+            thread.step_count += 1
             await thread.save()
 
     if llm_json.get("status") == "VALID":

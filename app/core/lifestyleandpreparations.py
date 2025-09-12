@@ -1,6 +1,20 @@
 from app.core.boto3client import bot_generate
 import json
+import ast
 
+async def clean_model_output(answer: str):
+    try:
+        # Try to load directly as JSON
+        return json.loads(answer)
+    except json.JSONDecodeError:
+        try:
+            # If it's wrapped as a string in a list, unwrap with ast.literal_eval
+            parsed = ast.literal_eval(answer)
+            if isinstance(parsed, list) and len(parsed) == 1 and isinstance(parsed[0], str):
+                return json.loads(parsed[0])
+            return parsed
+        except Exception:
+            return answer
 
 async def lifestyleAndPreparations(language: str):
     print("user language", language)
@@ -30,16 +44,16 @@ Input Messages:
 {messages}
 
 Output Format Example:
-["<translated message 1>", "<translated message 2>"]
+[dict,"<translated message 1>", "<translated message 2>"]
 """
 
 
     answer = await bot_generate(prompt,500)
     
-    try:
-        answer = json.loads(answer)  # will give list
-    except:
-        answer = [answer] 
-
+    # try:
+    #     answer = json.loads(answer)  # will give list
+    # except:
+    #     answer = [answer] 
+    answer= await clean_model_output(answer)
     print("Bedrock Response:", answer)
     return answer

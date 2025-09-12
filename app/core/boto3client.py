@@ -1,6 +1,6 @@
 # import boto3
 # import time
-# async def bot_generate(msg: str,max_token:int=10):    
+# async def bot_generate(msg: str,max_token:int=10):
 #     starttime=time.time()
 #     client = boto3.client("bedrock-runtime")
 
@@ -19,7 +19,7 @@
 #         modelId=model_id,
 #         messages=messages,
 #         inferenceConfig={
-#             "maxTokens": max_token,   
+#             "maxTokens": max_token,
 #             "temperature": 0.0,
 #         },
 #     )
@@ -31,11 +31,12 @@
 import time
 from app.llm_utils import ask_openai_validation_assistant
 
+
 async def bot_generate(msg: str, max_token: int = 10):
     start_time = time.time()
 
     # Call OpenAI function
-    llm_answer, _ = await ask_openai_validation_assistant(
+    llm_answer = await ask_openai_validation_assistant(
         prompt=msg,
         max_tokens=max_token,
     )

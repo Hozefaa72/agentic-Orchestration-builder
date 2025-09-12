@@ -6,9 +6,10 @@ async def IVFSuccessRate(user_message, language: str):
 
     # Explicitly keep messages as a list of separate strings
     messages = [
-        {"first_text":"We report a success rate of around 70-75% per cycle",
-         "second_heading":"1.75 Lakh +",
-         "second_text":"Couples found happiness"
+        {
+            "first_text": "We report a success rate of around 70-75% per cycle",
+            "second_heading": "1.75 Lakh +",
+            "second_text": "Couples found happiness",
         },
         "You can also get a personalized estimate  with our Success Calculator",
     ]
@@ -18,7 +19,7 @@ async def IVFSuccessRate(user_message, language: str):
                 User message: {user_message}  
 
                 Your task:  
-                - If the user asks about success rate, couples, or related information, translate the messages into {language}.  
+                - If the user asks about success rate note only sucess rate not failure rate, couples, or related information, translate the messages into {language}.  
                 - Translate only the text fields (`first_text`, `second_heading`, `second_text`) into {language},  
                 but keep all numbers/digits exactly the same.  
                 - Translate the second string in the list into {language}.  
@@ -32,17 +33,11 @@ async def IVFSuccessRate(user_message, language: str):
                 Input Messages:  
                 {messages}  
 
-                Expected Output Example:  
+                Expected Output:  
                 [
-                {{
-                    "first_text": "We report a success rate of around 70-75% per cycle",
-                    "second_heading": "1.75 Lakh +",
-                    "second_text": "Couples found happiness"
-                }},
-                "This is a translated second string"
+                dict,""
                 ]
             """
-
 
     answer = await bot_generate(prompt, 500)
 
