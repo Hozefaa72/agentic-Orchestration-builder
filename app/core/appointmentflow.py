@@ -7,6 +7,26 @@ from bson import ObjectId
 import json
 import re
 
+from dateutil import parser
+from datetime import datetime
+
+
+def is_valid_datetime(date_string: str) -> bool:
+    try:
+        parser.parse(date_string)
+        return True
+    except (ValueError, OverflowError):
+        return False
+
+
+def is_valid_time_slot(time_string: str) -> bool:
+    try:
+        datetime.strptime(time_string.strip(), "%I:%M %p")
+        # %I = hour (1–12), %M = minute, %p = AM/PM
+        return True
+    except ValueError:
+        return False
+
 
 async def appointment_flow(
     thread_id: str, flow_id: str, step_id: str, language: str, user_message: str
@@ -176,6 +196,43 @@ async def appointment_flow(
     #     msg = msg.replace("{time_slot}", user.time_slot)
 
     # print(msg)
+
+    if (
+        step["step_id"] == "7"
+        and is_valid_datetime(user_message)
+        and language == "English"
+    ):
+        if thread:
+            thread.flow_id = flow_id
+            thread.step_id = step["next_step"]
+            thread.step_count = 1
+            await thread.save()
+            user = await User_Info.find_one(User_Info.thread_id == thread_id)
+            user.checkup_date = user_message
+            await user.save()
+        return step["message"], "time_slots"
+    
+    if step["step_id"] == "8" and is_valid_time_slot(user_message) and language == "English":
+        if thread:
+            print("without using llm in step 8")
+            thread.flow_id = flow_id
+            thread.step_id = step['next_step']
+            thread.step_count = 1
+            await thread.save()
+            user = await User_Info.find_one(User_Info.thread_id == thread_id)
+            user.checkup_time_slot = user_message
+            user.appointment_status = AppointmentStatus.BOOKED
+            await user.save()
+            user_info = {
+                    "Date": user.checkup_date,
+                    "Time": user.checkup_time_slot,
+                    "Address": user.preffered_center_address,
+                    "City": user.City,
+                    "State": user.State,
+                }
+            step["message"].insert(0, user_info)
+        print("returning response to the ui")
+        return step['message'], "booked"
     if step["step_id"] == "5":
         match = re.search(r"\b\d{6}\b", user_message)
         if match:
@@ -230,7 +287,7 @@ Instructions:
 - Otherwise, if the input matches {step['valid_condition']} (regex + meaning check), 
   then → status = "VALID" and bot_response = {step['message']} (translated if needed).
 - Otherwise → status = "INVALID" and bot_response = {step['other_text']} (translated if needed).
--and also in same the format if it is string then string and if its is list of string then list of string
+- ** and also in same the format if it is string then string and if its is list of string then list of string
 
 Format:
 {{

@@ -19,24 +19,31 @@ async def IVFSuccessRate(user_message, language: str):
                 User message: {user_message}  
 
                 Your task:  
-                - If the user asks about success rat or successful cases, couples, or related information, translate the messages into {language}.  
-                - Translate only the text fields (`first_text`, `second_heading`, `second_text`) into {language},  
-                but keep all numbers/digits exactly the same.  
-                - Translate the second string in the list into {language}.  
-                - if the user talks about wrong thing or any irrelavant questions regarding the success rate or  if he asks about failure rate or failures of indira ivf or anything about indira ivf then:  
+
+                - CASE 1: If the user asks about success rate, successful cases, couples, or related information:  
+                • Translate the given `messages` list into {language}.  
+                • Only translate the values of `first_text`, `second_heading`, `second_text`, and the second string in the list.  
+                • Keep numbers/digits exactly the same.  
+                • Keep the structure **identical** to {messages}.  
+
+                - CASE 2: If the user asks about failure rate, failures, or anything irrelevant about Indira IVF:  
+                • Return exactly this JSON (not merged with messages):  
                 ["I can't help you on this. Is there anything else I can do?"]
 
-                ⚠️ IMPORTANT:  
-                - Do not add explanations, introductions, or extra text.  
-                - Return **only valid JSON** in the exact same structure.  
+                ⚠️ STRICT RULES:  
+                - Output must be **only valid JSON**.  
+                - Do not add explanations, labels, or extra text.  
+                - The output must be **either** the translated `messages` list **or** the failure JSON, nothing else.  
 
                 Input Messages:  
                 {messages}  
 
-                Output Format Example:
-                [dict, "<translated message 1>"]
-            """
+                Output Format Example (CASE 1):
+                [{{"first_text": "...", "second_heading": "...", "second_text": "..."}}, "<translated message>"]
 
+                Output Format Example (CASE 2):
+                ["I can't help you on this. Is there anything else I can do?"]
+            """
     answer = await bot_generate(prompt, 500)
 
     try:
