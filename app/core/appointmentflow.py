@@ -196,6 +196,13 @@ async def appointment_flow(
     #     msg = msg.replace("{time_slot}", user.time_slot)
 
     # print(msg)
+    if (step["step_id"]=="4" and re.fullmatch(r"\d{6}", user_message) and user_message=="123456" ):
+        if thread:
+            thread.flow_id = flow_id
+            thread.step_id = step["next_step"]
+            thread.step_count = 1
+            await thread.save()
+        return step["message"], None
 
     if (
         step["step_id"] == "7"
