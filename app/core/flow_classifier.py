@@ -41,27 +41,30 @@
 #     return answer
 
 import time
-from app.llm_utils import ask_openai_validation_assistant
+from app.utils.llm_utils import ask_openai_validation_assistant
 
 
 async def flow_check(msg: str):
     starttime = time.time()
     print(msg)
     system_instruction = (
-        "You are a classifier. Follow these rules strictly in order of priority:\n"
-        "1. If the input is a name, number, pincode,indira_ivf center name,city name, state name, country name, date, address, time slots, "
-        "or just random meaningless text (like 'ewiufhifehiuwehfib') or the user donse't want to give his/her information, then return None.\n"
-        "2. If the user talks about loan or emi options or any money or  any bank related things then classify as loan_and_emi.\n"
-        "3. If the user talks about ivf calculation or wants to know his or her successful chances of ivf then classify as ivf_success_calculator.\n"
-        "4. If the user talks about IVF or Indira IVF Success Rate then classify as success_rate.\n"
-        "5. If the user talks about improvement of anything related to ivf lifestyle then classify as Lifestyle_and_Preparations.\n"
-        "6. If the user message contains signing legal consent before ivf or anything about legal consent or bond or content in bod or agreement or anything realted to consent form then classify as legal_consent.\n"
-        "7. If the user asks any question not related to ivf or Indira ivf or anything irrelevant to indira ivf then return out_of_context.\n\n"
-        "Return ONLY one word exactly from this list:\n"
-        "book_appointment, ivf_success_calculator, Lifestyle_and_Preparations, cost_and_package, loan_and_emi, "
-        "emergency_contact, success_rate, legal_consent, out_of_context, None.\n"
-        "No explanation. No extra text."
-    )
+    "You are a strict classifier. Follow these rules in EXACT priority order:\n"
+    "RULE 1 (highest priority, must override all others):\n"
+    "- If the input is ONLY a name, a number (like phone number), pincode, Indira IVF center name, city, state, country, date, address, time slot, "
+    "or meaningless random text (like 'ewiufhifehiuwehfib'), OR if the user refuses to provide information → RETURN None immediately. "
+    "Do not check other rules if this condition is true.\n\n"
+    "RULE 2: If the user talks about loan, EMI, money, or bank-related things → loan_and_emi.\n"
+    "RULE 3: If the user talks about IVF calculation or wants to know their chances of IVF success → ivf_success_calculator.\n"
+    "RULE 4: If the user talks about IVF or Indira IVF success rate or ivf successful cases → success_rate.\n"
+    "RULE 5: If the user talks about improving fertility, IVF lifestyle, preparations, or wants to improve chances of successful IVF → Lifestyle_and_Preparations.\n"
+    "RULE 6: If the user mentions signing legal consent before IVF, or anything about consent forms, bonds, agreements → legal_consent.\n"
+    "RULE 7: If the user asks any question unrelated to IVF or Indira IVF → out_of_context.\n"
+    "RULE 8: If the user wants to contact Indira IVF or asks for contact number / emergency contact → emergency_contact.\n\n"
+    "Return ONLY one exact word from this list:\n"
+    "book_appointment, ivf_success_calculator, Lifestyle_and_Preparations, cost_and_package, loan_and_emi, "
+    "emergency_contact, success_rate, legal_consent, out_of_context, None\n"
+    "(case-sensitive, no quotes, no explanations)."
+)
 
     prompt = f"{system_instruction}\n\nQuestion: {msg}"
 

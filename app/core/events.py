@@ -1,7 +1,7 @@
 from beanie import init_beanie
 from fastapi import FastAPI
 from loguru import logger
-from app.config import ENV_PROJECT
+from app.utils.config import ENV_PROJECT
 from app.database import mongodb
 # from app.modules.async_redis_consumer import aredis, start_redis_consumer
 import asyncio

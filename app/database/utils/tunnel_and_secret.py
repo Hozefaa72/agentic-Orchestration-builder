@@ -5,7 +5,7 @@ import time
 import os 
 from urllib.parse import quote_plus, quote
 import boto3
-from app.config import ENV_PROJECT
+from app.utils.config import ENV_PROJECT
 
 
 def wait_for_port(host: str, port: int, timeout=15):

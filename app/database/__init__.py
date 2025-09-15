@@ -1,4 +1,4 @@
-from app.config import ENV_PROJECT
+from app.utils.config import ENV_PROJECT
 from app.database.connections.mongo import MongoDB
 from app.database.utils.tunnel_and_secret import build_documentdb_uri
 

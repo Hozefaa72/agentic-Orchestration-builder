@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.events import create_start_app_handler, create_stop_app_handler
 from app.routes.index import router
-from app.config import ENV_PROJECT
+from app.utils.config import ENV_PROJECT
 from app.middleware.middleware import TrimmedAuthMiddleware
 
 

@@ -2,7 +2,7 @@ from fastapi import HTTPException,status
 import time
 from typing import Dict
 import jwt
-from app.config import ENV_PROJECT
+from app.utils.config import ENV_PROJECT
 from jwt import ExpiredSignatureError, InvalidTokenError
 import uuid
 

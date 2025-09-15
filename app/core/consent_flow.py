@@ -1,5 +1,5 @@
 from app.models.threads import Thread
-from app.llm_utils import ask_openai_validation_assistant
+from app.utils.llm_utils import ask_openai_validation_assistant
 from bson import ObjectId
 import json
 
@@ -81,27 +81,22 @@ Step: {step_id}, Expecting: {step['expected_input']}
 User input: "{user_message}"  
 
 Available responses:
-- VALID response = {step['message']} (translate if needed into {language})  
-- INVALID response = {step['other_text']} (translate if needed into {language})  
+- VALID response = {step['message']} → MUST be translated into {language}  
+- INVALID response = {step['other_text']} → MUST be translated into {language}  
 
 Rules:
 1. If user input matches the expected meaning (even if paraphrased or in another language):  
-   → Output: {{"status": "VALID", "bot_response": {step['message']}}}  
+   → Output: {{"status": "VALID", "bot_response": {step['message']} (translated to {language})}}  
 2. If user input does NOT match the expected meaning:  
-   → Output: {{"status": "INVALID", "bot_response": {step['other_text']}}}  
+   → Output: {{"status": "INVALID", "bot_response": {step['other_text']} (translated to {language})}}  
 3. You MUST follow this mapping strictly:  
-   - status = "VALID" → bot_response = {step['message']} only.  
-   - status = "INVALID" → bot_response = {step['other_text']} only.  
+   - status = "VALID" → bot_response = {step['message']} only (translated).  
+   - status = "INVALID" → bot_response = {step['other_text']} only (translated).  
    - Any other combination is forbidden.  
 4. Do not create or generate your own answers. Copy ONLY from the predefined variables.  
 5. Always respond strictly in valid JSON.  
+6. The `bot_response` must always be fully in {language}. 
 
-### Examples
-Input: "what is in the consent form?"  
-Output: {{"status": "VALID", "bot_response": {step['message']}}}  
-
-Input: "give me your phone number"  
-Output: {{"status": "INVALID", "bot_response": {step['other_text']}}}  
 
 Now process the actual input:
 """

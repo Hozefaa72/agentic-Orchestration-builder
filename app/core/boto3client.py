@@ -29,7 +29,7 @@
 #     return answer
 
 import time
-from app.llm_utils import ask_openai_validation_assistant
+from app.utils.llm_utils import ask_openai_validation_assistant
 
 
 async def bot_generate(msg: str, max_token: int = 10):

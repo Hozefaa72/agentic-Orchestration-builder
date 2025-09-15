@@ -1,5 +1,5 @@
 import boto3
-from app.llm_utils import ask_openai_validation_assistant, update_token_usage
+from app.utils.llm_utils import ask_openai_validation_assistant, update_token_usage
 from app.models.threads import Thread
 from app.models.user_info import User_Info, AppointmentStatus
 from app.core.ivf_centers import find_nearest_by_postal
@@ -286,14 +286,20 @@ Valid condition (regex): {step['valid_condition']}
 bot_response must ALWAYS be written in {language}, regardless of input language or system language.
 
 
+
 Instructions:
-- First, detect intent:
-  If the {user_message} expresses a refusal to provide the requested information 
-  (examples: "I don’t want to share", "prefer not to say", "skip", "NA", "no quiero compartir", "je ne veux pas partager", etc. in ANY language),
-  then → return only {step['final_text']} (translated into {language}), with status = "INVALID".
-- Otherwise, if the input matches {step['valid_condition']} (regex + meaning check), 
-  then → status = "VALID" and bot_response = {step['message']} (translated if needed).
-- Otherwise → status = "INVALID" and bot_response = {step['other_text']} (translated if needed).
+1. Refusal detection:
+   - If the {user_message} intent states that it dosen't want to share information then return only {step['final_text']} (translated into {language}), with status = "INVALID".
+   - If user input clearly expresses **refusal** (like "I don’t want to give", "skip", "no", "nahi batana", "not sharing", "prefer not to say"),
+     then → return only {step['final_text']} (translated into {language}), with status = "INVALID".
+   - Do NOT treat unrelated or invalid inputs as refusal.
+2. Regex + meaning validation:
+   - If the input matches {step['valid_condition']} (regex + meaning check), 
+     then → return status = "VALID" and bot_response = {step['message']} (translated into {language}).
+3. Otherwise:
+   - If input is not refusal and does not match regex, 
+     then → return status = "INVALID" and bot_response = {step['other_text']} (translated into {language}).
+
 - ** and also in same the format if it is string then string and if its is list of string then list of string
 
 Format:

@@ -1,4 +1,4 @@
-from app.config import ENV_PROJECT
+from app.utils.config import ENV_PROJECT
 
 if __name__ == "__main__":
     import uvicorn

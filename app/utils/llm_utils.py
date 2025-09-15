@@ -1,11 +1,11 @@
 from openai import OpenAI
 
-from app.config import ENV_PROJECT
+from app.utils.config import ENV_PROJECT
 
 # Use this client for all requests
 client = OpenAI(api_key=ENV_PROJECT.OPENAI_API_KEY)
 
-async def ask_openai_validation_assistant(prompt: str, model="gpt-3.5-turbo", max_tokens=500, temperature=0):
+async def ask_openai_validation_assistant(prompt: str, model="gpt-4.1-nano", max_tokens=500, temperature=0):
     try:
         response = client.chat.completions.create(
             model=model,
