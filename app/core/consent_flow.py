@@ -48,7 +48,7 @@ async def ConsentFlow(
                     "The form covers IVF steps, embryo handling, storage period, future decisions (like donation or disposal), and your right to withdraw consent anytime",
                     "Hope this was helpful. Let me know if you need more info",
                 ],
-                "expected_input": "What’s included in the consent form? or what's inside the consent form? or what is in the form",
+                "expected_input": "What’s included in the consent form? or what's inside the consent form? or what is in the form or what is written in the form etc",
                 "other_text": [
                     {
                         "first_text": "For more specific information, please connect with our call center between 9 AM and 6 PM.",
