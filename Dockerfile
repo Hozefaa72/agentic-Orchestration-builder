@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     ca-certificates \
     dnsutils \
     libnss3 \
+    openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 # Install uv (ultra-fast Python package manager)

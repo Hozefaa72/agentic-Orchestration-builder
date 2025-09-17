@@ -1,17 +1,17 @@
-from abc import abstractmethod
+# from abc import abstractmethod
 
 
-class Database:
-    client = None
+# class Database:
+#     client = None
 
-    @abstractmethod
-    def init_connection(): ...
+#     @abstractmethod
+#     def init_connection(): ...
 
-    @property
-    def client(self):
-        return self.client
+#     @property
+#     def client(self):
+#         return self.client
 
-    def check_health(self):
-        if self.client is not None:
-            raise Exception("Database Not connected..")
-        return True
+#     def check_health(self):
+#         if self.client is not None:
+#             raise Exception("Database Not connected..")
+#         return True

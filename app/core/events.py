@@ -2,7 +2,7 @@ from beanie import init_beanie
 from fastapi import FastAPI
 from loguru import logger
 from app.utils.config import ENV_PROJECT
-from app.database import mongodb
+# from app.database import mongodb
 # from app.modules.async_redis_consumer import aredis, start_redis_consumer
 import asyncio
 from typing import Callable
@@ -11,6 +11,7 @@ from app.models.threads import Thread
 from app.models.message import Message
 from app.models.users import User
 from app.models.user_info import User_Info
+from motor.motor_asyncio import AsyncIOMotorClient
 
 listen_task = None
 
@@ -19,18 +20,13 @@ def create_start_app_handler(app: FastAPI) -> Callable:
     @logger.catch
     async def start_app() -> None:
         try:
-            await mongodb.client.admin.command("ping")
-            logger.info("MongoDB Connected.")
+   
+            print("DataBase URL",ENV_PROJECT.DATABASE_URL)
+            client = AsyncIOMotorClient(ENV_PROJECT.DATABASE_URL)
+            database = client.get_database("indra_ivf")
+            # Initialize Beanie with the database and models
+            await init_beanie(database, document_models=[User, Thread, Message,User_Info])
 
-            # ✅ Get the DB name safely
-            db_name = getattr(ENV_PROJECT, "MONGO_DB_NAME", "IVF_CHATBOT") or "IVF_CHATBOT"
-            logger.info(f"Using DB: {db_name}")
-
-            # ✅ Initialize Beanie
-            await init_beanie(
-                database=mongodb.client[db_name],
-                document_models=[Thread, Message, User, User_Info],
-            )
 
             # await start_redis()
             # logger.info("Redis Connected.")
@@ -42,22 +38,22 @@ def create_start_app_handler(app: FastAPI) -> Callable:
     return start_app
 
 
-def create_stop_app_handler(app: FastAPI) -> Callable:
+# def create_stop_app_handler(app: FastAPI) -> Callable:
 
-    @logger.catch
-    async def stop_app() -> None:
-        try:
-            mongodb.client.close()
-            logger.info("Closed MongoDB Connection")
+#     @logger.catch
+#     async def stop_app() -> None:
+#         try:
+#             mongodb.client.close()
+#             logger.info("Closed MongoDB Connection")
 
-            # await stop_redis()
-            # logger.info("Closed Redis Connection")
+#             # await stop_redis()
+#             # logger.info("Closed Redis Connection")
 
-        except Exception as e:
-            logger.error(f"Shutdown error: {e}")
-            raise e
+#         except Exception as e:
+#             logger.error(f"Shutdown error: {e}")
+#             raise e
 
-    return stop_app
+#     return stop_app
 
 
 # async def start_redis():
