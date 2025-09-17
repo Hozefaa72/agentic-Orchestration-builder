@@ -21,6 +21,8 @@ class Settings(BaseSettings):
     MONGO_DB_NAME: str
     MONGO_PORT: int
     MONGO_HOST: str
+    AWS_ACCESS_KEY_ID:str
+    AWS_SECRET_ACCESS_KEY:str
     AWS_REGION: str
     REPO_NAME: str
 
