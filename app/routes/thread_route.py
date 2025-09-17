@@ -126,6 +126,7 @@ async def create_thread(lang:str,current_user: dict = Depends(get_current_user))
             language=lang,
             timestamp=datetime.now(timezone.utc),
         )
+        print("after creating thread")
         token = update_jwt(user_id, str(new_thread.id), session_id)
 
         await new_thread.save()

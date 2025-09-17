@@ -20,6 +20,7 @@ from app.core.loan_and_emi_options import loan_emi_option
 from app.core.emergencyContact import EmergencyContact
 from app.core.ivfSuccessRate import IVFSuccessRate
 from app.core.consent_flow import ConsentFlow
+from app.core.ivf_steps import ivfSteps
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -280,6 +281,31 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                     {"type": "message", "text": i, "contentType": None}
                                 )
                             )
+                elif (data.get("subtype")=="ivf_steps" or flow_id=="ivf_steps"):
+                    response,contentType = await ivfSteps(thread_id, flow_id, step_id, language, content)
+                    if isinstance(response, list) and contentType=="ivf_steps":
+                        print("i'm in if condition of ivf_steps")
+                        for i in range(len(response)):
+                            await websocket.send_text(
+                            json.dumps(
+                                {"type": "message", "text": response[i], "contentType": "ivf_steps" if i == 2 else None}
+                            )
+                            )
+                    elif isinstance(response,list):
+                        for i in response:
+                            await websocket.send_text(
+                            json.dumps(
+                                {"type": "message", "text": i, "contentType": None}
+                            )
+                            )
+
+                    else:
+                        await websocket.send_text(
+                            json.dumps(
+                                {"type": "message", "text": response, "contentType": None}
+                            )
+                            )
+
                 elif (data.get("subtype") == "out_of_context") or (
                     flow_id == "out_of_context"
                 ):
