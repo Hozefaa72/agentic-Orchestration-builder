@@ -1,34 +1,16 @@
-import boto3
-from app.utils.llm_utils import ask_openai_validation_assistant, update_token_usage
+from app.utils.llm_utils import ask_openai_validation_assistant
 from app.models.threads import Thread
-from app.models.user_info import User_Info, AppointmentStatus
+from app.models.user_info import User_Info
 from app.core.ivf_centers import find_nearest_by_postal
 from bson import ObjectId
 import json
 import re
 
-from dateutil import parser
-from datetime import datetime
 
 
-def is_valid_datetime(date_string: str) -> bool:
-    try:
-        parser.parse(date_string)
-        return True
-    except (ValueError, OverflowError):
-        return False
 
 
-def is_valid_time_slot(time_string: str) -> bool:
-    try:
-        datetime.strptime(time_string.strip(), "%I:%M %p")
-        # %I = hour (1–12), %M = minute, %p = AM/PM
-        return True
-    except ValueError:
-        return False
-
-
-async def appointment_flow(
+async def ivfPackages(
     thread_id: str, flow_id: str, step_id: str, language: str, user_message: str
 ):
 
@@ -41,7 +23,7 @@ async def appointment_flow(
         step_id = thread.step_id
     elif not step_id:
         step_id = "1"
-        user_message = "I want to Book an Appointment"
+        user_message="How much does IVF cycle cost?"
 
     print(
         " Current step:",
@@ -52,17 +34,15 @@ async def appointment_flow(
         flow_id,
         "|user message",
         user_message,
-        "|language",
-        language
     )
 
-    appointmentflow = {
-        "flow_id": "book_appointment",
+    packages_flow = {
+        "flow_id": "cost_and_package",
         "steps": {
             "1": {
                 "step_id": "1",
-                "message": "To book appointment, please share your name ",
-                "expected_input": "User wants to book an appointment or book free Consultation",
+                "message": ["To share the package details, I’ll need a few quick details from you","Please share your name"],
+                "expected_input": "The user wants to know the cost of an IVF cycle or the packages available for an IVF cycle.",
                 "valid_condition": "",
                 "action": None,
                 "other_text": "",
@@ -71,7 +51,7 @@ async def appointment_flow(
             },
             "2": {
                 "step_id": "2",
-                "message": "Thanks. Please provide your mobile number so we can proceed with booking your appointment",
+                "message": "Thanks. Please provide your mobile number",
                 "expected_input": "name of the person",
                 "valid_condition": r"^[A-Za-z\s]{2,50}$",
                 "action": "send_otp_api",
@@ -99,7 +79,7 @@ async def appointment_flow(
                 "step_id": "4",
                 "message": [
                     "Your mobile number is verified. Thank you for confirming!",
-                    "Now please mention your preferred pin code to continue with the booking ",
+                    "Now please mention your preferred pin code",
                 ],
                 "expected_input": "6 digit otp",
                 "valid_condition": r"^\d{6}$",
@@ -110,7 +90,9 @@ async def appointment_flow(
             },
             "5": {
                 "step_id": "5",
-                "message": "",
+                "message": ["Thank you for sharing your details",
+                            {"title":"We offer 3 packages ","packages":[{"cycle":"1 CYCLE PLAN","cost":"Approx. ₹1-1.65L","text":"One Embryo Transfer"},{"cycle":"2 CYCLE PLAN","cost":"Approx. ₹2-2.5L","text":"Two Embryo Transfer"},{"cycle":"3 CYCLE PLAN","cost":"Approx. ₹3.5-3.75L","text":"Three Embryo Transfer"}],"body":"The right plan will be recommended by your consulting doctor based on your reports and medical history"},
+                            "Do you want a free consultation to get personalized plan and pricing details?"],
                 "expected_input": "pincode",
                 "valid_condition": r"^\d{6}$",
                 "action": "fetch_centers_api",
@@ -122,82 +104,18 @@ async def appointment_flow(
                     "We cannot proceed with the booking process without these details. Please share your pincode to continue",
                     "You can enter your city or area name instead",
                 ],
-                "next_step": "6",
-            },
-            "6": {
-                "step_id": "6",
-                "message": ["", "Please select your preferred date from the calendar."],
-                "expected_input": "center_selection",
-                "valid_condition": r".+",
-                "action": None,
-                "other_text": "",
-                "final_text": "",
-                "next_step": "7",
-            },
-            "7": {
-                "step_id": "7",
-                "message": "Please pick a time slot time to book your appointment",
-                "expected_input": "date",
-                "valid_condition": r"^\d{4}-\d{2}-\d{2}$",
-                "action": "fetch_time_slots_api",
-                "other_text": "",
-                "final_text": "",
-                "next_step": "8",
-            },
-            "8": {
-                "step_id": "8",
-                "message": [
-                    "Your appointment details have been sent to your registered mobile number",
-                    "Let me know if you want to reschedule or cancel the appointment",
-                ],
-                "expected_input": "time-slot",
-                "valid_condition": r"^\d{2}:\d{2}",
-                "action": "save_appointment_api",
-                "other_text": "",
-                "final_text": "",
                 "next_step": None,
             },
         },
     }
 
-    step = appointmentflow["steps"].get(step_id)
+    step = packages_flow["steps"].get(step_id)
     if not step:
         return {"error": "Invalid step"}
 
     if not user_message or user_message.strip() == "":
         user_message = ""
-    # msg = step["message"]
-    # user = await User_Info.find_one(User_Info.thread_id == thread_id)
 
-    # # अगर message list में है तो उसे join कर लो
-    # if isinstance(msg, list):
-    #     msg = " ".join(msg)
-
-    # # name placeholder replace
-    # if "{name}" in msg:
-    #     if step["step_id"] == "2":
-    #         # Step 2 पर user_message ही name है
-    #         msg = msg.replace("{name}", user_message)
-    #     elif user and user.name:
-    #         msg = msg.replace("{name}", user.name)
-
-    # # pincode replace
-    # if "{pincode}" in msg and user and getattr(user, "pincode", None):
-    #     msg = msg.replace("{pincode}", user.pincode)
-
-    # # center replace
-    # if "{center}" in msg and user and getattr(user, "center", None):
-    #     msg = msg.replace("{center}", user.center)
-
-    # # date replace
-    # if "{date}" in msg and user and getattr(user, "date", None):
-    #     msg = msg.replace("{date}", user.date)
-
-    # # time_slot replace
-    # if "{time_slot}" in msg and user and getattr(user, "time_slot", None):
-    #     msg = msg.replace("{time_slot}", user.time_slot)
-
-    # print(msg)
     if (step["step_id"]=="4" and re.fullmatch(r"\d{6}", user_message) and user_message=="123456" ):
         if thread:
             thread.flow_id = flow_id
@@ -205,43 +123,6 @@ async def appointment_flow(
             thread.step_count = 1
             await thread.save()
         return step["message"], None
-
-    if (
-        step["step_id"] == "7"
-        and is_valid_datetime(user_message)
-        and language == "English"
-    ):
-        if thread:
-            thread.flow_id = flow_id
-            thread.step_id = step["next_step"]
-            thread.step_count = 1
-            await thread.save()
-            user = await User_Info.find_one(User_Info.thread_id == thread_id)
-            user.checkup_date = user_message
-            await user.save()
-        return step["message"], "time_slots"
-    
-    if step["step_id"] == "8" and is_valid_time_slot(user_message) and language == "English":
-        if thread:
-            print("without using llm in step 8")
-            thread.flow_id = flow_id
-            thread.step_id = step['next_step']
-            thread.step_count = 1
-            await thread.save()
-            user = await User_Info.find_one(User_Info.thread_id == thread_id)
-            user.checkup_time_slot = user_message
-            user.appointment_status = AppointmentStatus.BOOKED
-            await user.save()
-            user_info = {
-                    "Date": user.checkup_date,
-                    "Time": user.checkup_time_slot,
-                    "Address": user.preffered_center_address,
-                    "City": user.City,
-                    "State": user.State,
-                }
-            step["message"].insert(0, user_info)
-        print("returning response to the ui")
-        return step['message'], "booked"
     if step["step_id"] == "5":
         match = re.search(r"\b\d{6}\b", user_message)
         if match:
@@ -253,30 +134,17 @@ async def appointment_flow(
         if response:
             user = await User_Info.find_one(User_Info.thread_id == thread_id)
             user.preffered_center = response
+            user.pincode=pincode
             await user.save()
             next_step = step["next_step"]
             if thread:
                 thread.flow_id = flow_id
                 thread.step_id = next_step
                 await thread.save()
-            return response, "centers"
+            if language=="English":
+                return step['message'], "cost_and_package"
         # else:
         # return ["Sorry, the Pincode is invalid"," Please enter a valid pincode to check clinic availability near you"], None
-
-    if step["step_id"] == "6":
-        user = await User_Info.find_one(User_Info.thread_id == thread_id)
-        for c in user.preffered_center:
-            if (c["Clinic Name"].strip().lower() == user_message.strip().lower()) or (
-                c["Clinic Name"].strip().lower().split("-")[1].strip()
-                == user_message.strip().lower()
-            ):
-                user.preffered_center_address = c["Address"]
-                user.City = c["City"]
-                user.State = c["State"]
-                await user.save()
-                step["message"][0] = c["Address"]
-        if step["message"][0] == "":
-            return "Please enter a valid city", None
 
     prompt = f"""
 You are a validation assistant.
@@ -356,26 +224,6 @@ Rules:
             user = await User_Info.find_one(User_Info.thread_id == thread_id)
             user.pincode = user_message
             await user.save()
-        if step["step_id"] == "7":
-            user = await User_Info.find_one(User_Info.thread_id == thread_id)
-            user.checkup_date = user_message
-            await user.save()
-        if step["step_id"] == "8":
-            user = await User_Info.find_one(User_Info.thread_id == thread_id)
-            user.checkup_time_slot = user_message
-            user.appointment_status = AppointmentStatus.BOOKED
-            await user.save()
-            if "bot_response" in llm_json and isinstance(
-                llm_json["bot_response"], list
-            ):
-                user_info = {
-                    "Date": user.checkup_date,
-                    "Time": user.checkup_time_slot,
-                    "Address": user.preffered_center_address,
-                    "City": user.City,
-                    "State": user.State,
-                }
-                llm_json["bot_response"].insert(0, user_info)
 
         # Save thread
         if thread:
@@ -384,14 +232,8 @@ Rules:
             thread.step_count = 1
             await thread.save()
 
-        # return structured JSON (with bot response filled from flow)
-
-        if step["step_id"] == "7":
-            return llm_json.get("bot_response"), "time_slots"
-        elif step["step_id"] == "6":
-            return llm_json.get("bot_response"), "calendar"
-        elif step["step_id"] == "8":
-            return llm_json.get("bot_response"), "booked"
+        if step["step_id"] == "5":
+            return llm_json.get("bot_response"), "cost_and_package"
         else:
             return llm_json.get("bot_response"), None
     else:

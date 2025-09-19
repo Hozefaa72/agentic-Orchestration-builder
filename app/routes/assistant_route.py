@@ -21,6 +21,7 @@ from app.core.emergencyContact import EmergencyContact
 from app.core.ivfSuccessRate import IVFSuccessRate
 from app.core.consent_flow import ConsentFlow
 from app.core.ivf_steps import ivfSteps
+from app.core.ivf_packages import ivfPackages
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -290,6 +291,41 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                             json.dumps(
                                 {"type": "message", "text": response[i], "contentType": "ivf_steps" if i == 2 else None}
                             )
+                            )
+                    elif isinstance(response,list):
+                        for i in response:
+                            await websocket.send_text(
+                            json.dumps(
+                                {"type": "message", "text": i, "contentType": None}
+                            )
+                            )
+
+                    else:
+                        await websocket.send_text(
+                            json.dumps(
+                                {"type": "message", "text": response, "contentType": None}
+                            )
+                            )
+                elif (data.get("subtype")=="cost_and_package" or flow_id=="cost_and_package"):
+                    response,contentType = await ivfPackages(thread_id, flow_id, step_id, language, content)
+                    if isinstance(response, list) and contentType=="cost_and_package":
+                        print("i'm in if condition of ivf_costs")
+                        for i in range(len(response)):
+                            if i == 1:
+                                content_type = "cost_and_package"
+                            elif i == 2:
+                                content_type = "book_appointment"
+                            else:
+                                content_type = None
+
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[i],
+                                        "contentType": content_type
+                                    }
+                                )
                             )
                     elif isinstance(response,list):
                         for i in response:
