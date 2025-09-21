@@ -213,6 +213,8 @@ async def change_language(request: ChangeLangRequest,current_user: dict = Depend
 
         thread.language = request.language
         await thread.save()
+        new_thread = await Thread.find_one(Thread.id == thread_obj_id)
+        print("new thread after language change",new_thread.language)
 
         return {"msg": "Language Changed SuccessFully"}
     except HTTPException as http_exc:

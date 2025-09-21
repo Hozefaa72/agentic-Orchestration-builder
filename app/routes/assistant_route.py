@@ -60,6 +60,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                 content = data.get("message")
                 # thread_id = active_connection["thread_id"]
                 thread_id = data.get("thread_id")
+                print("the thread id in websocket is", thread_id)
                 thread_obj_id = ObjectId(thread_id)
                 thread = await Thread.find_one(Thread.id == thread_obj_id)
                 flow_id = thread.flow_id
