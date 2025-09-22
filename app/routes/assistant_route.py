@@ -22,6 +22,7 @@ from app.core.ivfSuccessRate import IVFSuccessRate
 from app.core.consent_flow import ConsentFlow
 from app.core.ivf_steps import ivfSteps
 from app.core.ivf_packages import ivfPackages
+from app.core.emotionalSupport import EmotionalSupport
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -342,7 +343,20 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 {"type": "message", "text": response, "contentType": None}
                             )
                             )
-
+                elif (data.get("subtype") == "emotional_support") or (
+                    flow_id == "emotional_support"
+                ):
+                    response = await EmotionalSupport(content, language)
+                    for i in range(len(response)):
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response[i],
+                                    "contentType": None,
+                                }
+                            )
+                        )
                 elif (data.get("subtype") == "out_of_context") or (
                     flow_id == "out_of_context"
                 ):

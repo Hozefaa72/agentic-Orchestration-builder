@@ -130,6 +130,7 @@ async def create_thread(lang:str,current_user: dict = Depends(get_current_user))
         token = update_jwt(user_id, str(new_thread.id), session_id)
 
         await new_thread.save()
+        print("the id of the thread created is ",new_thread.id)
 
         return {
             "message": "Thread created successfully",
@@ -215,6 +216,7 @@ async def change_language(request: ChangeLangRequest,current_user: dict = Depend
         await thread.save()
         new_thread = await Thread.find_one(Thread.id == thread_obj_id)
         print("new thread after language change",new_thread.language)
+        print("new thread after language change",new_thread.id)
 
         return {"msg": "Language Changed SuccessFully"}
     except HTTPException as http_exc:
