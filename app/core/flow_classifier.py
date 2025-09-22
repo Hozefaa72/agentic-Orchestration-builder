@@ -60,7 +60,7 @@ async def flow_check(msg: str):
     "RULE 6: If the user mentions signing legal consent before IVF, or anything about consent forms, bonds, agreements → legal_consent.\n"
     "RULE 7: If the user asks about the different steps in ivf cycle or steps in ivf cycle or steps in Self Oocyte cycle then return ivf_steps"
     "RULE 8: If the user asks about the costs of the ivf cycle or different packages in an ivf cycle or packages in ivf cycle then return cost_and_package"
-    "RULE 9: If the user asks any question unrelated to IVF or Indira IVF → out_of_context.\n"
+    "RULE 9: If the user asks any question unrelated to IVF or Indira IVF or fertility or like who is rahul? etc → out_of_context.\n"
     "RULE 10: If the user wants to contact Indira IVF or asks for contact number / emergency contact → emergency_contact.\n\n"
     "Return ONLY one exact word from this list:\n"
     "book_appointment, ivf_success_calculator, Lifestyle_and_Preparations, cost_and_package, loan_and_emi, "
