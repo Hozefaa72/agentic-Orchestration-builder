@@ -23,6 +23,7 @@ from app.core.consent_flow import ConsentFlow
 from app.core.ivf_steps import ivfSteps
 from app.core.ivf_packages import ivfPackages
 from app.core.emotionalSupport import EmotionalSupport
+from app.core.medicalTerms import MedicalTerms
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -372,6 +373,25 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
+                elif (
+                    data.get("subtype") == "medical_terms"
+                    or flow_id == "medical_terms"
+                ):
+                    response = await MedicalTerms(content,language)
+                    if isinstance(response, list):
+                        for i in response:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {"type": "message", "text": i, "contentType": None}
+                                )
+                            )
+                    else:
+                        await websocket.send_text(
+                            json.dumps(
+                                {"type": "message", "text": response, "contentType": None}
+                            )
+                        )
+                    
                 elif (data.get("subtype") == "legal_consent") or (
                     flow_id == "legal_consent"
                 ):
