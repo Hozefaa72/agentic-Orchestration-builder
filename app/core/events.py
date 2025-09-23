@@ -6,6 +6,7 @@ from app.utils.config import ENV_PROJECT
 # from app.modules.async_redis_consumer import aredis, start_redis_consumer
 import asyncio
 from typing import Callable
+from app.core.kbSetUP import KBSetup
 
 from app.models.threads import Thread
 from app.models.message import Message
@@ -27,6 +28,8 @@ def create_start_app_handler(app: FastAPI) -> Callable:
             # Initialize Beanie with the database and models
             await init_beanie(database, document_models=[User, Thread, Message,User_Info])
 
+            await KBSetup()
+            logger.info("Knowledge Base Setup Completed.")
 
             # await start_redis()
             # logger.info("Redis Connected.")

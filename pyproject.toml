@@ -20,5 +20,17 @@ dependencies = [
     "motor>=3.3.1",
     "loguru>=0.7.2",
     "redis>=5.0.0", 
-    "openai>=1.107.1"
+    "openai>=1.107.1",
+    "langchain>=0.3.27",
+    "langchain-community==0.3.29",
+    "langchain-core==0.3.76",
+    "langchain-text-splitters==0.3.11",
+    "langsmith==0.4.30",
+    "lazy-model==0.3.0",
+    "loguru==0.7.3",
+    "lxml==6.0.2",
+    "chromadb ==1.1.0",
+    "pypdf ==3.14.0",
+    "langchain-openai>=0.3.33",
+    "jq==1.10.0"
 ]
