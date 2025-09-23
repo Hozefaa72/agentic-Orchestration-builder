@@ -8,6 +8,8 @@ class AppointmentStatus(str, Enum):
     BOOKED = "booked"
     NOT_BOOKED = "not_booked"
     IN_PROCESS = "in_process"
+    CANCELLED = "cancelled"
+    RESCHEDULED = "rescheduled"
 
 class User_Info(Document):
 

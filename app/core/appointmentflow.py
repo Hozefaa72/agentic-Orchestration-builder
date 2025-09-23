@@ -37,6 +37,21 @@ async def appointment_flow(
     step_count = thread.step_count
     print("step_count", step_count)
 
+    existing_user= await User_Info.find_one(User_Info.thread_id == thread_id)
+    if existing_user and existing_user.appointment_status==AppointmentStatus.BOOKED:
+        booked_message=["You Appointment is Already Booked"]
+        user_info = {
+                    "Date": existing_user.checkup_date,
+                    "Time": existing_user.checkup_time_slot,
+                    "Address": existing_user.preffered_center_address,
+                    "City": existing_user.City,
+                    "State": existing_user.State,
+                }
+        booked_message.insert(0, user_info)
+        print("returning response to the ui")
+        return booked_message, "booked"
+        
+
     if thread and thread.step_id:
         step_id = thread.step_id
     elif not step_id:
@@ -402,4 +417,7 @@ Rules:
             thread.step_id = next_step
             thread.step_count = 1
             await thread.save()
+            user = await User_Info.find_one(User_Info.thread_id == thread_id)
+            user.appointment_status = AppointmentStatus.IN_PROCESS
+            await user.save()
         return llm_json.get("bot_response"), None

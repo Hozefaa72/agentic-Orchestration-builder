@@ -62,11 +62,12 @@ async def flow_check(msg: str):
     "RULE 8: If the user asks about the costs of the ivf cycle or different packages in an ivf cycle or packages in ivf cycle then return cost_and_package"
     "RULE 9: If the user asks for emotional support or if the user is frightened or nervous about ivf or wants emotional support then return emotional_support"
     "RULE 10: If the user asks about ANY IVF-related medical terms for both male and female or any body organs related term Example(fallopian tube or uterine fibroids) all bodyparts which are helpful during ivf or any ivf related medical condition for both male and female (eg Adenomyosis, myomas)  or infertility-related medical procedure,terms, test, treatment, technology, diagnosis, or terminology for both male and female (examples include but are not limited to Embryo Transfer, Embryo Grading,Pregnancy test, Insemination, Embryo Freezing, Frozen Embryo Transfer (FET), Sperm collection, Egg retrieval, Fit for transfer, ICSI, PCOS, Endometrial Scratch, Hysteroscopy, Ovarian Stimulation, Luteal Phase Support, etc.) and if the users asks about Hormones & Medications(like estrogen,Estradiol etc),Embryology Terms,Uterine & Reproductive Terms Fertility Diagnostics or Outcomes & Complications→ medical_terms"
-    "RULE 11: If the user asks any question unrelated to IVF or Indira IVF or fertility etc → out_of_context.\n"
-    "RULE 12: If the user wants to contact Indira IVF or asks for contact number / emergency contact → emergency_contact.\n\n"
+    "RULE 11: If the user wants to cancel or reschedule its appointment then return cancel_or_reschedule"
+    "RULE 12: If the user asks any question unrelated to IVF or Indira IVF or fertility etc → out_of_context.\n"
+    "RULE 13: If the user wants to contact Indira IVF or asks for contact number / emergency contact → emergency_contact.\n\n"
     "Return ONLY one exact word from this list:\n"
     "book_appointment, ivf_success_calculator, Lifestyle_and_Preparations, cost_and_package, loan_and_emi, "
-    "emergency_contact, success_rate, legal_consent,ivf_steps,emotional_support,out_of_context,medical_terms,None\n"
+    "emergency_contact, success_rate, legal_consent,ivf_steps,emotional_support,out_of_context,medical_terms,cancel_or_reschedule,None\n"
     "(case-sensitive, no quotes, no explanations)."
 )
 

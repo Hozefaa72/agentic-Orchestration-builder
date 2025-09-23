@@ -24,6 +24,7 @@ from app.core.ivf_steps import ivfSteps
 from app.core.ivf_packages import ivfPackages
 from app.core.emotionalSupport import EmotionalSupport
 from app.core.medicalTerms import MedicalTerms
+from app.core.cancelReschedule import cancelRescheduleFlow
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -373,6 +374,33 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
+                elif (data.get("subtype") == "cancel_or_reschedule") or (
+                    flow_id == "cancel_or_reschedule"
+                ):
+                    response,contentType = await cancelRescheduleFlow(thread_id, language,content)
+                    if contentType=="out_of_context":
+                        for i in range(len(response)):
+                            print(response[i])
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[i],
+                                        "contentType": "out_of_context" if i == 0 else None,
+                                    }
+                                )
+                            )
+                    else:
+                        await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response,
+                                        "contentType": contentType,
+                                    }
+                                )
+                            )
+
                 elif (
                     data.get("subtype") == "medical_terms"
                     or flow_id == "medical_terms"
