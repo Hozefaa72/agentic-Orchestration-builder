@@ -25,6 +25,7 @@ from app.core.ivf_packages import ivfPackages
 from app.core.emotionalSupport import EmotionalSupport
 from app.core.medicalTerms import MedicalTerms
 from app.core.cancelReschedule import cancelRescheduleFlow
+from app.core.greetings import greetingsFlow
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -77,21 +78,6 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                     await thread.save()
                     flow_id = data.get("subtype")
                     step_id = None
-                elif (
-                    data.get("isflow") == "end_flow"
-                    and data.get("subtype") == "end_flow"
-                ):
-                    response = await end_flow(thread_id, language)
-                    flow_id = None
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "type": "message",
-                                "text": response,
-                                "contentType": "end_flow",
-                            }
-                        )
-                    )
                 else:
                     print("in flow check")
                     llm_flow_id = await flow_check(content)
@@ -102,6 +88,20 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                             flow_id = llm_flow_id
                             step_id = None
                             await thread.save()
+                    else:
+                        response = await end_flow(thread_id, language,False)
+                        for i in range(len(response)):
+                            print(response[i])
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[i],
+                                        "contentType": "out_of_context" if i == 1 else None,
+                                    }
+                                )
+                            )
+
 
                 if not thread_id:
                     await websocket.send_text(
@@ -430,7 +430,25 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 {"type": "message", "text": response, "contentType": None}
                             )
                         )
-                    
+                elif (
+                    data.get("subtype") == "greetings"
+                    or flow_id == "greetings"
+                ):
+                    response = await greetingsFlow(content,language)
+                    if isinstance(response, list):
+                        for i in response:
+                            await websocket.send_text(
+                                json.dumps(
+                                    {"type": "message", "text": i, "contentType": "greetings"}
+                                )
+                            )
+                    else:
+                        await websocket.send_text(
+                            json.dumps(
+                                {"type": "message", "text": response, "contentType": "greetings"}
+                            )
+                        )
+                
                 elif (data.get("subtype") == "legal_consent") or (
                     flow_id == "legal_consent"
                 ):

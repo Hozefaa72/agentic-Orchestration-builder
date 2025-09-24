@@ -65,9 +65,10 @@ async def flow_check(msg: str):
     "RULE 11: If the user wants to cancel or reschedule its appointment then return cancel_or_reschedule"
     "RULE 12: If the user asks any question unrelated to IVF or Indira IVF or fertility etc → out_of_context.\n"
     "RULE 13: If the user wants to contact Indira IVF or asks for contact number / emergency contact → emergency_contact.\n\n"
+    "RULE 14:If the user greets the bot then return -> greetings"
     "Return ONLY one exact word from this list:\n"
     "book_appointment, ivf_success_calculator, Lifestyle_and_Preparations, cost_and_package, loan_and_emi, "
-    "emergency_contact, success_rate, legal_consent,ivf_steps,emotional_support,out_of_context,medical_terms,cancel_or_reschedule,None\n"
+    "emergency_contact, success_rate, legal_consent,ivf_steps,emotional_support,out_of_context,medical_terms,cancel_or_reschedule,greetings,None\n"
     "(case-sensitive, no quotes, no explanations)."
 )
 
