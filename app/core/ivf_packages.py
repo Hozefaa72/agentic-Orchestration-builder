@@ -5,7 +5,7 @@ from app.core.ivf_centers import find_nearest_by_postal
 from bson import ObjectId
 import json
 import re
-
+from app.core.existingUser import step_check
 
 
 
@@ -13,6 +13,78 @@ import re
 async def ivfPackages(
     thread_id: str, flow_id: str, step_id: str, language: str, user_message: str
 ):
+    packages_flow = {
+        "flow_id": "cost_and_package",
+        "steps": {
+            "1": {
+                "step_id": "1",
+                "message": ["To share the package details, I’ll need a few quick details from you","Please share your name"],
+                "expected_input": "The user wants to know the cost of an IVF cycle or the packages available for an IVF cycle.",
+                "valid_condition": "",
+                "action": None,
+                "other_text": "",
+                "final_text": "",
+                "next_step": "2",
+            },
+            "2": {
+                "step_id": "2",
+                "message": "Thanks. Please provide your mobile number",
+                "expected_input": "name of the person",
+                "valid_condition": r"^[A-Za-z\s]{2,50}$",
+                "action": "send_otp_api",
+                "other_text": "Sorry, I couldn’t recognize that as a name. Could you please re-enter your full name Let's try again",  # "Please share your name it is important for appointment booking step",
+                "final_text": [
+                    "We cannot continue with the booking without your name. Please enter your name to proceed",
+                    "You can still explore information without giving your name. Would you like to know about topics below",
+                ],
+                "next_step": "3",
+            },
+            "3": {
+                "step_id": "3",
+                "message": "Please enter the OTP sent to your mobile number for verification",
+                "expected_input": "only ten digit phone number",
+                "valid_condition": r"^\d{10}$",
+                "action": "verify_otp_api",
+                "other_text": "Please enter a valid ten digit Phone Number it is important for booking an appointment",
+                "final_text": [
+                    "We cannot continue with the booking without your phone number. Please enter your number to proceed",
+                    "You can still explore information without giving your number. Would you like to know about topics below",
+                ],
+                "next_step": "4",
+            },
+            "4": {
+                "step_id": "4",
+                "message": [
+                    "Your mobile number is verified. Thank you for confirming!",
+                    "Now please mention your preferred pin code",
+                ],
+                "expected_input": "6 digit otp",
+                "valid_condition": r"^\d{6}$",
+                "action": None,
+                "other_text": "Oops! The OTP you entered doesn’t match. Please try again",
+                "final_text": "You’ve reached the maximum OTP attempts. You can request a new OTP in 1 hour",
+                "next_step": "5",
+            },
+            "5": {
+                "step_id": "5",
+                "message": ["Thank you for sharing your details",
+                            {"title":"We offer 3 packages ","packages":[{"cycle":"1 CYCLE PLAN","cost":"Approx. ₹1-1.65L","text":"One Embryo Transfer"},{"cycle":"2 CYCLE PLAN","cost":"Approx. ₹2-2.5L","text":"Two Embryo Transfer"},{"cycle":"3 CYCLE PLAN","cost":"Approx. ₹3.5-3.75L","text":"Three Embryo Transfer"}],"body":"The right plan will be recommended by your consulting doctor based on your reports and medical history"},
+                            "Do you want a free consultation to get personalized plan and pricing details?"],
+                "expected_input": "pincode",
+                "valid_condition": r"^\d{6}$",
+                "action": "fetch_centers_api",
+                "other_text": [
+                    "Sorry, the Pincode is invalid",
+                    " Please enter a valid pincode to check clinic availability near you",
+                ],
+                "final_text": [
+                    "We cannot proceed with the booking process without these details. Please share your pincode to continue",
+                    "You can enter your city or area name instead",
+                ],
+                "next_step": None,
+            },
+        },
+    }
 
     thread_obj_id = ObjectId(thread_id)
     thread = await Thread.find_one(Thread.id == thread_obj_id)
@@ -22,8 +94,14 @@ async def ivfPackages(
     if thread and thread.step_id:
         step_id = thread.step_id
     elif not step_id:
-        step_id = "1"
-        user_message="How much does IVF cycle cost?"
+        user_message=await step_check(thread_id,packages_flow,5)
+        print("printing user message after existing user ",user_message)
+        new_thread=await Thread.find_one(Thread.id == thread_obj_id)
+        if new_thread.step_id:
+            step_id=new_thread.step_id
+        else:
+            step_id = "1"
+            user_message = "How much does IVF cycle cost?"
 
     print(
         " Current step:",

@@ -8,12 +8,13 @@ from app.models.user_info import User_Info, AppointmentStatus
 async def cancelRescheduleFlow(
     thread_id: str, language: str,user_message:str
 ):
-   
+    print("in cancel and reschdule bloack")
     thread_obj_id = ObjectId(thread_id)
     thread = await Thread.find_one(Thread.id == thread_obj_id)
     booked_user = await User_Info.find_one(User_Info.thread_id == thread_id)
-    if booked_user and (booked_user.appointment_status != AppointmentStatus.BOOKED or booked_user.appointment_status != AppointmentStatus.CANCELLED or booked_user.appointment_status!=AppointmentStatus.RESCHEDULED):
-        print("appointment not booked yet")
+    print("booked user appointment status is", booked_user.appointment_status)
+    if booked_user and (booked_user.appointment_status == AppointmentStatus.IN_PROCESS):
+        print("appointment not booked yet and appointment status is",booked_user.appointment_status)
         booked_message = "Your appointment is not booked yet",
         return booked_message,"book_appointment"
 

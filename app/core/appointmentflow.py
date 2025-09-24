@@ -6,6 +6,8 @@ from app.core.ivf_centers import find_nearest_by_postal
 from bson import ObjectId
 import json
 import re
+from app.core.cancelReschedule import cancelRescheduleFlow
+from app.core.existingUser import step_check
 
 from dateutil import parser
 from datetime import datetime
@@ -13,64 +15,28 @@ from datetime import datetime
 
 def is_valid_datetime(date_string: str) -> bool:
     try:
+        print("in valid date  function")
         parser.parse(date_string)
         return True
-    except (ValueError, OverflowError):
+    except (ValueError, OverflowError) as e:
+        print(f"Invalid datetime: {e}")
         return False
 
 
 def is_valid_time_slot(time_string: str) -> bool:
     try:
+        print("in valid time slot function")
         datetime.strptime(time_string.strip(), "%I:%M %p")
         # %I = hour (1–12), %M = minute, %p = AM/PM
         return True
-    except ValueError:
+    except ValueError as e:
+        print(f"Invalid time slot: {e}")
         return False
 
 
 async def appointment_flow(
     thread_id: str, flow_id: str, step_id: str, language: str, user_message: str
 ):
-
-    thread_obj_id = ObjectId(thread_id)
-    thread = await Thread.find_one(Thread.id == thread_obj_id)
-    step_count = thread.step_count
-    print("step_count", step_count)
-
-    existing_user= await User_Info.find_one(User_Info.thread_id == thread_id)
-    if existing_user and existing_user.appointment_status==AppointmentStatus.BOOKED:
-        booked_message=["You Appointment is Already Booked"]
-        user_info = {
-                    "Date": existing_user.checkup_date,
-                    "Time": existing_user.checkup_time_slot,
-                    "Address": existing_user.preffered_center_address,
-                    "City": existing_user.City,
-                    "State": existing_user.State,
-                }
-        booked_message.insert(0, user_info)
-        print("returning response to the ui")
-        return booked_message, "booked"
-        
-
-    if thread and thread.step_id:
-        step_id = thread.step_id
-    elif not step_id:
-        step_id = "1"
-        user_message = "I want to Book an Appointment"
-
-    print(
-        " Current step:",
-        step_id,
-        "| Thread:",
-        thread_id,
-        "| Flow:",
-        flow_id,
-        "|user message",
-        user_message,
-        "|language",
-        language
-    )
-
     appointmentflow = {
         "flow_id": "book_appointment",
         "steps": {
@@ -170,10 +136,191 @@ async def appointment_flow(
                 "action": "save_appointment_api",
                 "other_text": "",
                 "final_text": "",
+                "next_step": "9",
+            },
+            "9": {
+                "step_id": "9",
+                "message":  [{"first_text":"To cancel or reschedule your appointment, please contact our call center between 9 AM and 6 PM.","second_text":"CUSTOMER CARE NUMBER","phone_number":"1800 3092429"},
+        "Hope this helps! You can come back anytime to explore  or get more info"
+               ],
+                "expected_input": "time-slot or date",
+                "valid_condition":"",
+                "action": "cancel_or_reschedule_appointment",
+                "other_text": "",
+                "final_text": "",
                 "next_step": None,
             },
         },
     }
+
+    thread_obj_id = ObjectId(thread_id)
+    thread = await Thread.find_one(Thread.id == thread_obj_id)
+    step_count = thread.step_count
+    print("step_id", thread.step_id)
+
+
+
+    existing_user= await User_Info.find_one(User_Info.thread_id == thread_id)
+    if thread.step_id=="9" and (is_valid_datetime(user_message) or is_valid_time_slot(user_message)):
+        message="i want to reschedule my appointment"
+        print("the appointment status of the user is ",existing_user.appointment_status)
+        response,contentType=await cancelRescheduleFlow(thread_id,language,message)
+        print("coming back into appointment flow")
+        return response,contentType
+    if existing_user and existing_user.appointment_status==AppointmentStatus.BOOKED:
+        booked_message=["You Appointment is Already Booked"]
+        user_info = {
+                    "Date": existing_user.checkup_date,
+                    "Time": existing_user.checkup_time_slot,
+                    "Address": existing_user.preffered_center_address,
+                    "City": existing_user.City,
+                    "State": existing_user.State,
+                }
+        booked_message.insert(0, user_info)
+        print("returning response to the ui")
+        return booked_message, "booked"
+        
+
+    if thread and thread.step_id:
+        step_id = thread.step_id
+    elif not step_id:
+        user_message=await step_check(thread_id,appointmentflow,8)
+        print("printing user message after existing user ",user_message)
+        new_thread=await Thread.find_one(Thread.id == thread_obj_id)
+        if new_thread.step_id:
+            step_id=new_thread.step_id
+        else:
+            step_id = "1"
+            user_message = "I want to Book an Appointment"
+
+    print(
+        " Current step:",
+        step_id,
+        "| Thread:",
+        thread_id,
+        "| Flow:",
+        flow_id,
+        "|user message",
+        user_message,
+        "|language",
+        language
+    )
+
+    # appointmentflow = {
+    #     "flow_id": "book_appointment",
+    #     "steps": {
+    #         "1": {
+    #             "step_id": "1",
+    #             "message": "To book appointment, please share your name ",
+    #             "expected_input": "User wants to book an appointment or book free Consultation",
+    #             "valid_condition": "",
+    #             "action": None,
+    #             "other_text": "",
+    #             "final_text": "",
+    #             "next_step": "2",
+    #         },
+    #         "2": {
+    #             "step_id": "2",
+    #             "message": "Thanks. Please provide your mobile number so we can proceed with booking your appointment",
+    #             "expected_input": "name of the person",
+    #             "valid_condition": r"^[A-Za-z\s]{2,50}$",
+    #             "action": "send_otp_api",
+    #             "other_text": "Sorry, I couldn’t recognize that as a name. Could you please re-enter your full name Let's try again",  # "Please share your name it is important for appointment booking step",
+    #             "final_text": [
+    #                 "We cannot continue with the booking without your name. Please enter your name to proceed",
+    #                 "You can still explore information without giving your name. Would you like to know about topics below",
+    #             ],
+    #             "next_step": "3",
+    #         },
+    #         "3": {
+    #             "step_id": "3",
+    #             "message": "Please enter the OTP sent to your mobile number for verification",
+    #             "expected_input": "only ten digit phone number",
+    #             "valid_condition": r"^\d{10}$",
+    #             "action": "verify_otp_api",
+    #             "other_text": "Please enter a valid ten digit Phone Number it is important for booking an appointment",
+    #             "final_text": [
+    #                 "We cannot continue with the booking without your phone number. Please enter your number to proceed",
+    #                 "You can still explore information without giving your number. Would you like to know about topics below",
+    #             ],
+    #             "next_step": "4",
+    #         },
+    #         "4": {
+    #             "step_id": "4",
+    #             "message": [
+    #                 "Your mobile number is verified. Thank you for confirming!",
+    #                 "Now please mention your preferred pin code to continue with the booking ",
+    #             ],
+    #             "expected_input": "6 digit otp",
+    #             "valid_condition": r"^\d{6}$",
+    #             "action": None,
+    #             "other_text": "Oops! The OTP you entered doesn’t match. Please try again",
+    #             "final_text": "You’ve reached the maximum OTP attempts. You can request a new OTP in 1 hour",
+    #             "next_step": "5",
+    #         },
+    #         "5": {
+    #             "step_id": "5",
+    #             "message": "",
+    #             "expected_input": "pincode",
+    #             "valid_condition": r"^\d{6}$",
+    #             "action": "fetch_centers_api",
+    #             "other_text": [
+    #                 "Sorry, the Pincode is invalid",
+    #                 " Please enter a valid pincode to check clinic availability near you",
+    #             ],
+    #             "final_text": [
+    #                 "We cannot proceed with the booking process without these details. Please share your pincode to continue",
+    #                 "You can enter your city or area name instead",
+    #             ],
+    #             "next_step": "6",
+    #         },
+    #         "6": {
+    #             "step_id": "6",
+    #             "message": ["", "Please select your preferred date from the calendar."],
+    #             "expected_input": "center_selection",
+    #             "valid_condition": r".+",
+    #             "action": None,
+    #             "other_text": "",
+    #             "final_text": "",
+    #             "next_step": "7",
+    #         },
+    #         "7": {
+    #             "step_id": "7",
+    #             "message": "Please pick a time slot time to book your appointment",
+    #             "expected_input": "date",
+    #             "valid_condition": r"^\d{4}-\d{2}-\d{2}$",
+    #             "action": "fetch_time_slots_api",
+    #             "other_text": "",
+    #             "final_text": "",
+    #             "next_step": "8",
+    #         },
+    #         "8": {
+    #             "step_id": "8",
+    #             "message": [
+    #                 "Your appointment details have been sent to your registered mobile number",
+    #                 "Let me know if you want to reschedule or cancel the appointment",
+    #             ],
+    #             "expected_input": "time-slot",
+    #             "valid_condition": r"^\d{2}:\d{2}",
+    #             "action": "save_appointment_api",
+    #             "other_text": "",
+    #             "final_text": "",
+    #             "next_step": "9",
+    #         },
+    #         "9": {
+    #             "step_id": "9",
+    #             "message":  [{"first_text":"To cancel or reschedule your appointment, please contact our call center between 9 AM and 6 PM.","second_text":"CUSTOMER CARE NUMBER","phone_number":"1800 3092429"},
+    #     "Hope this helps! You can come back anytime to explore  or get more info"
+    #            ],
+    #             "expected_input": "time-slot or date",
+    #             "valid_condition":"",
+    #             "action": "cancel_or_reschedule_appointment",
+    #             "other_text": "",
+    #             "final_text": "",
+    #             "next_step": None,
+    #         },
+    #     },
+    # }
 
     step = appointmentflow["steps"].get(step_id)
     if not step:
@@ -268,6 +415,7 @@ async def appointment_flow(
         if response:
             user = await User_Info.find_one(User_Info.thread_id == thread_id)
             user.preffered_center = response
+            user.pincode = pincode
             await user.save()
             next_step = step["next_step"]
             if thread:
@@ -360,7 +508,7 @@ Rules:
         next_step = step["next_step"]
         print(next_step)
         if step["step_id"] == "2":
-            user_info = User_Info(name=user_message, thread_id=thread_id)
+            user_info = User_Info(name=user_message, thread_id=thread_id,appointment_status=AppointmentStatus.IN_PROCESS)
 
             await user_info.insert()
         if step["step_id"] == "3":
@@ -411,13 +559,11 @@ Rules:
             return llm_json.get("bot_response"), None
     else:
         # stay on same step
+        print("in else condition")
         if thread and step["step_id"] == "1":
             next_step = step["next_step"]
             thread.flow_id = flow_id
             thread.step_id = next_step
             thread.step_count = 1
             await thread.save()
-            user = await User_Info.find_one(User_Info.thread_id == thread_id)
-            user.appointment_status = AppointmentStatus.IN_PROCESS
-            await user.save()
         return llm_json.get("bot_response"), None

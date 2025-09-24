@@ -152,6 +152,17 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                     }
                                 )
                             )
+                    elif isinstance(response, list) and contentType == "out_of_context":
+                        for i, item in enumerate(response):
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": item,
+                                        "contentType": "out_of_context" if i == 0 else None,
+                                    }
+                                )
+                            )
                     elif isinstance(response, list) and contentType != "centers":
                         for message in response:
                             await websocket.send_text(
