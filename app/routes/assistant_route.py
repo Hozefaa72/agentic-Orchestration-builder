@@ -26,6 +26,9 @@ from app.core.emotionalSupport import EmotionalSupport
 from app.core.medicalTerms import MedicalTerms
 from app.core.cancelReschedule import cancelRescheduleFlow
 from app.core.greetings import greetingsFlow
+from app.core.faqflow import FAQFlow
+from app.core.faqflow import query_vectorstore
+
 
 router = APIRouter()
 websocket_manager = WebSocketManager()
@@ -71,7 +74,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                 step_id = thread.step_id
                 language = thread.language
                 print("the sellected language is", language)
-                print(thread)
+                print(flow_id)
                 if data.get("isflow") == "confirm":
                     print("in confirm")
                     thread.flow_id = data.get("subtype")
@@ -88,7 +91,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                             flow_id = llm_flow_id
                             step_id = None
                             await thread.save()
-                    else:
+                    if llm_flow_id == "None" and data.get("subtype") =="" and not(flow_id):
                         response = await end_flow(thread_id, language,False)
                         for i in range(len(response)):
                             print(response[i])
@@ -373,18 +376,52 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                 elif (data.get("subtype") == "out_of_context") or (
                     flow_id == "out_of_context"
                 ):
-                    response = await end_flow(thread_id, language)
-                    for i in range(len(response)):
-                        print(response[i])
-                        await websocket.send_text(
+                    queries=await query_vectorstore(content)
+                    if queries:
+                        thread.flow_id = llm_flow_id
+                        thread.step_id = None
+                        flow_id = llm_flow_id
+                        step_id = None
+                        await thread.save()
+                        response = await FAQFlow(content, language,queries)
+                        if isinstance(response, list):
+                            for i in range(len(response)):
+                                print(response[i])
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "message",
+                                            "text": response[i],
+                                            "contentType": "out_of_context" if i == 1 else None,
+                                        }
+                                    )
+                                )
+                        else:
+                            await websocket.send_text(
                             json.dumps(
                                 {
                                     "type": "message",
-                                    "text": response[i],
-                                    "contentType": "out_of_context" if i == 1 else None,
+                                    "text": response,
+                                    "contentType": None,
                                 }
                             )
                         )
+
+                    
+
+                    else:
+                        response = await end_flow(thread_id, language)
+                        for i in range(len(response)):
+                            print(response[i])
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[i],
+                                        "contentType": "out_of_context" if i == 1 else None,
+                                    }
+                                )
+                            )
                 elif (data.get("subtype") == "cancel_or_reschedule") or (
                     flow_id == "cancel_or_reschedule"
                 ):
@@ -487,6 +524,19 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
+                elif (data.get("subtype") == "faq_flow") or (
+                    flow_id == "faq_flow"
+                ):
+                    response= await FAQFlow(content,language)
+                    await websocket.send_text(
+                        json.dumps(
+                            {
+                                "type": "message",
+                                "text": response,
+                                "contentType": None,
+                            }
+                        )
+                    )
                 else:
                     continue
 

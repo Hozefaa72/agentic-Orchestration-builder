@@ -4,8 +4,17 @@ from langchain_openai import OpenAIEmbeddings
 from langchain_community.vectorstores import Chroma
 from app.utils.config import ENV_PROJECT
 
+vectorstore=None
+
+def get_vectorstore():
+    global vectorstore
+    if vectorstore is None:
+        raise RuntimeError("Vectorstore not initialized yet")
+    return vectorstore
+
 async def KBSetup():
     # JSON (you need to tell which field to extract)
+    global vectorstore
     json_loader = JSONLoader(
         file_path="app/datasets/faq.json",
         jq_schema=".[] | {text: (.question + \"\\n\" + .answer)}",  # adjust depending on your JSON structure
