@@ -12,6 +12,7 @@ from app.models.threads import Thread
 from app.models.message import Message
 from app.models.users import User
 from app.models.user_info import User_Info
+from app.models.otp_verification import OtpVerification
 from motor.motor_asyncio import AsyncIOMotorClient
 
 listen_task = None
@@ -26,7 +27,7 @@ def create_start_app_handler(app: FastAPI) -> Callable:
             client = AsyncIOMotorClient(ENV_PROJECT.DATABASE_URL)
             database = client.get_database("indra_ivf")
             # Initialize Beanie with the database and models
-            await init_beanie(database, document_models=[User, Thread, Message,User_Info])
+            await init_beanie(database, document_models=[User, Thread, Message,User_Info,OtpVerification])
 
             await KBSetup()
             logger.info("Knowledge Base Setup Completed.")

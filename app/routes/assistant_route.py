@@ -387,12 +387,16 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                         if isinstance(response, list):
                             for i in range(len(response)):
                                 print(response[i])
+                                if  isinstance(response[i], dict):
+                                    contentType = "out_of_context"
+                                else:
+                                    contentType=None
                                 await websocket.send_text(
                                     json.dumps(
                                         {
                                             "type": "message",
                                             "text": response[i],
-                                            "contentType": "out_of_context" if i == 1 else None,
+                                            "contentType": contentType
                                         }
                                     )
                                 )
@@ -528,15 +532,32 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                     flow_id == "faq_flow"
                 ):
                     response= await FAQFlow(content,language)
-                    await websocket.send_text(
-                        json.dumps(
-                            {
-                                "type": "message",
-                                "text": response,
-                                "contentType": None,
-                            }
+                    if isinstance(response, list):
+                            for i in range(len(response)):
+                                print(response[i])
+                                if  isinstance(response[i], dict):
+                                    contentType = "out_of_context"
+                                else:
+                                    contentType=None
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "message",
+                                            "text": response[i],
+                                            "contentType": contentType,
+                                        }
+                                    )
+                                )
+                    else:
+                            await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response,
+                                    "contentType": None,
+                                }
+                            )
                         )
-                    )
                 else:
                     continue
 

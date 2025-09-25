@@ -121,6 +121,8 @@
 from app.core.boto3client import bot_generate
 from app.core.kbSetUP import get_vectorstore
 import ast
+from langchain_openai import OpenAIEmbeddings
+from app.utils.config import ENV_PROJECT
 
 async def FAQFlow(user_message: str, language: str,context=None):
     if not(context):
@@ -130,18 +132,29 @@ async def FAQFlow(user_message: str, language: str,context=None):
             "Hope this helps! You can come back anytime to explore  or get more info"
         ]
     
-    print("context i'm sending",context)
-    context_text = " ".join([doc.page_content for doc in context]) if isinstance(context, list) else context
+    
+    if isinstance(context, list):
+        seen = set()
+        unique_docs = []
+        for doc in context:
+            if doc.page_content not in seen:
+                seen.add(doc.page_content)
+                unique_docs.append(doc.page_content)
+        context_text = " ".join(unique_docs)
+    else:
+        context_text = context
+    print("context i'm sending",context_text)
     prompt = f"""
 You are a helpful IVF assistant. Use the following context to answer the question.
 
 Instructions:
+Step 1: Translate the question into English.
 - Preserve the grammatical style and phrasing of the knowledge base.
 - Summarize your answer in 10-50 words.
 - Answer in the following language: {language}
--i'm giving you {context} if you find the context right for the question asked by user then return the answer based on the context.
-- If you don't find the answer, return the following JSON exactly as-is (do not change structure or numbers): {messages} do not return this in string it should be in list
--don't return both  
+-i'm giving you {context_text} if you find the context right understand the semantic of context and try to find the answer in context for the question (question can be in any language try to translate question and then check with context) asked by user then return the answer based on the context and don't send anything else from the invalid message list.
+- If you don't find the answer, return the following JSON exactly as-is (do not change structure or numbers): {messages} do not return this in string it should be in list and translate it into this {language}
+-Strict Rule-don't merge both either the invalid message in which you will return list or either the answer regarding the context 
 
 
 Question:
@@ -159,14 +172,15 @@ Answer (as JSON):
             print("Error evaluating the string to a list:", e)
             answer = [answer]
 
-    print("Bedrock Response:", answer)
+    print("Bedrock Response:", type(answer))
     return answer
 
 
 # Optional helper function
-async def query_vectorstore(query: str, k: int = 3):
+async def query_vectorstore(query: str, k: int = 5):
     vs = get_vectorstore()
-    results = vs.similarity_search(query, k=k)
+    embeddings = OpenAIEmbeddings(model="text-embedding-3-small",api_key=ENV_PROJECT.OPENAI_API_KEY)
+    results = vs.similarity_search_by_vector(embedding=embeddings.embed_query(query),k=k)
     if not results:
         return None
     return results

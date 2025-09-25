@@ -6,9 +6,8 @@ from bson import ObjectId
 import json
 import re
 from app.core.existingUser import step_check
-
-
-
+from app.schemas.otp_verification import OtpRequest,OtpVerify
+from app.cruds.otp_verification import create_or_update_otp_entry,send_indira_otp,verify_otp_entry,call_ivf_lead_creation_api
 
 
 async def ivfSteps(
@@ -192,13 +191,82 @@ async def ivfSteps(
     if not user_message or user_message.strip() == "":
         user_message = ""
 
-    if (step["step_id"]=="4" and re.fullmatch(r"\d{6}", user_message) and user_message=="123456" ):
-        if thread:
-            thread.flow_id = flow_id
-            thread.step_id = step["next_step"]
-            thread.step_count = 1
-            await thread.save()
-        return step["message"], None
+    existing_user=await User_Info.find_one(User_Info.thread_id == thread_id)
+    if (step["step_id"]=="3"):
+        match = re.search(r"\b\d{10}\b", user_message)
+        if match:
+            phone_number = match.group(0)
+              # the actual 10-digit number
+            if existing_user.name:
+                otp_request = OtpRequest(contact_no=phone_number, name=existing_user.name)
+            else:
+                otp_request = OtpRequest(contact_no=phone_number, name="Guest")
+            otp = await create_or_update_otp_entry(otp_request, thread_id)
+            await send_indira_otp(contact_no=phone_number, otp_code=otp["otp_code"])
+            otp.pop("otp_code", None)
+            if language =="English" and thread:
+                thread.flow_id = flow_id
+                thread.step_id = step["next_step"]
+                thread.step_count = 1
+                await thread.save()
+                user = await User_Info.find_one(User_Info.thread_id == thread_id)
+                user.phone_number = phone_number
+                await user.save()
+                return step["message"], None
+        # if not(match) and language=="English":
+        #     return step["other_text"], None
+
+    if (step["step_id"]=="4" ):
+        match = re.search(r"\b\d{6}\b", user_message)
+        if match:
+            otp = match.group(0)
+            otp_request = OtpVerify(otp_code=otp,contact_no=existing_user.phone_number, name=existing_user.name)
+            result=await verify_otp_entry(otp_request, thread_id)
+            print("result of otp verification", result)
+            if result and language=="English" and thread:
+                thread.flow_id = flow_id
+                thread.step_id = step["next_step"]
+                thread.step_count = 1
+                await thread.save()
+                return step["message"], None
+            if result and language !="English":
+                thread.flow_id = flow_id
+                thread.step_id = step["next_step"]
+                thread.step_count = 1
+                await thread.save()
+                prompt=f"Yo have to just return {step['message']} in translated langauage-{language} Output:as Json and in same structure like the message which i have given"
+                llm_answer = await ask_openai_validation_assistant(prompt)
+                try:
+                    llm_json = json.loads(llm_answer)
+                except:
+                    llm_json=[llm_answer]
+                return llm_json,None
+            if not(result) and language=="English":
+                if existing_user.name:
+                    otp_request = OtpRequest(contact_no=existing_user.phone_number, name=existing_user.name)
+                else:
+                    otp_request = OtpRequest(contact_no=existing_user.phone_number, name="Guest")
+                otp = await create_or_update_otp_entry(otp_request, thread_id)
+                await send_indira_otp(contact_no=existing_user.phone_number, otp_code=otp["otp_code"])
+                return step["other_text"], None
+            if not(result) and language!="English":
+                prompt=f"Yo have to just return {step['other_text']} in translated langauage-{language} Output:as Json and in same structure like the message which i have given"
+                llm_answer = await ask_openai_validation_assistant(prompt)
+                if existing_user.name:
+                    otp_request = OtpRequest(contact_no=existing_user.phone_number, name=existing_user.name)
+                else:
+                    otp_request = OtpRequest(contact_no=existing_user.phone_number, name="Guest")
+                otp = await create_or_update_otp_entry(otp_request, thread_id)
+                await send_indira_otp(contact_no=existing_user.phone_number, otp_code=otp["otp_code"])
+                try:
+                    llm_json = json.loads(llm_answer)
+                except:
+                    llm_json=[llm_answer]
+                return llm_json,None
+            
+        # if not(match) and language=="English":
+        #     return step["other_text"], None
+        
     if step["step_id"] == "5":
         match = re.search(r"\b\d{6}\b", user_message)
         if match:
@@ -213,6 +281,13 @@ async def ivfSteps(
             user.pincode=pincode
             await user.save()
             next_step = step["next_step"]
+            user = await User_Info.find_one(User_Info.thread_id == thread_id)
+            result=await call_ivf_lead_creation_api(
+            full_name=user.name,
+            contact_no=user.phone_number,
+            pincode=user.pincode
+          ) 
+            print(result)
             if thread:
                 thread.flow_id = flow_id
                 thread.step_id = next_step
