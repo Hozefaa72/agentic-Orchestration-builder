@@ -12,14 +12,13 @@ async def cancelRescheduleFlow(
     thread_obj_id = ObjectId(thread_id)
     thread = await Thread.find_one(Thread.id == thread_obj_id)
     booked_user = await User_Info.find_one(User_Info.thread_id == thread_id)
-    print("booked user appointment status is", booked_user.appointment_status)
     if booked_user and (booked_user.appointment_status == AppointmentStatus.IN_PROCESS):
         print("appointment not booked yet and appointment status is",booked_user.appointment_status)
         booked_message = "Your appointment is not booked yet",
         return booked_message,"book_appointment"
 
     if not booked_user:
-        return "Hope this helps! You can come back anytime to explore  or get more info",None
+        return "Hope this helps! but your appointment is not booked yet",None
     cancel_messages = [{"first_text":"To cancel your appointment, please contact our call center between 9 AM and 6 PM.","second_text":"CUSTOMER CARE NUMBER","phone_number":"1800 3092429"},
         "Hope this helps! You can come back anytime to explore  or get more info"
     ]
