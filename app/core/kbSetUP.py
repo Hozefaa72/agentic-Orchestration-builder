@@ -38,4 +38,4 @@ async def KBSetup():
         embedding=embeddings,
         persist_directory="chroma_db"  # folder to save
     )
-    vectorstore.persist()
+    # vectorstore.persist()
