@@ -147,21 +147,30 @@ async def FAQFlow(user_message: str, language: str,context=None):
     prompt = f"""
 You are a helpful IVF assistant. Use the following context to answer the question.
 
+Context:-{context_text}
+
 Instructions:
 Step 1: Translate the question into English.
-- Preserve the grammatical style and phrasing of the knowledge base.
+Step 2: Check if the given context is  relevant to the question understand the question and the context right it is very important and sometimes there will be exact question also in the context text so please answer it right.
+- If the context is even partially relevant, you MUST generate the answer ONLY from the context.
 - Summarize your answer in 10-50 words.
+- Preserve the grammatical style and phrasing of the knowledge base.
 - Answer in the following language: {language}
--i'm giving you {context_text} if you find the context right understand the semantic of context and try to find the answer in context for the question (question can be in any language try to translate question and then check with context) asked by user then return the answer based on the context and don't send anything else from the invalid message list.
-- If you don't find the answer, return the following JSON exactly as-is (do not change structure or numbers): {messages} do not return this in string it should be in list and translate it into this {language}
--Strict Rule-don't merge both either the invalid message in which you will return list or either the answer regarding the context 
 
+Strict Rule:
+- If the context is relevant → ONLY answer from the context.
+- If the context is NOT relevant at all → return this JSON exactly (not as string, but as list), translated into {language}: {messages}
+
+Do not merge both. Return ONLY one of the two:
+1. Answer (based on context)
+2. Or the invalid message JSON
 
 Question:
 {user_message}
 
-Answer (as JSON): 
+Answer (as JSON):
 """
+
     answer = await bot_generate(prompt, 500)
     print(answer)
 
