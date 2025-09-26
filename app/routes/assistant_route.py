@@ -28,6 +28,7 @@ from app.core.cancelReschedule import cancelRescheduleFlow
 from app.core.greetings import greetingsFlow
 from app.core.faqflow import FAQFlow
 from app.core.faqflow import query_vectorstore
+from app.core.findHospital import FindHospital
 
 
 router = APIRouter()
@@ -376,7 +377,7 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                 elif (data.get("subtype") == "out_of_context") or (
                     flow_id == "out_of_context"
                 ):
-                    queries=await query_vectorstore(content)
+                    queries=await query_vectorstore(content,language)
                     if queries:
                         thread.flow_id = llm_flow_id
                         thread.step_id = None
@@ -531,8 +532,37 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                 elif (data.get("subtype") == "faq_flow") or (
                     flow_id == "faq_flow"
                 ):
+                    print("the message in faq flow is ",content)
                     response= await FAQFlow(content,language)
-                    if isinstance(response, list):
+                    if isinstance(response,list) and data.get("isflow") == "confirm":
+                        for i in range(len(response)):
+                                print(response[i])
+                                if  isinstance(response[i], dict):
+                                    contentType = "out_of_context"
+                                else:
+                                    contentType=None
+                                await websocket.send_text(
+                                    json.dumps(
+                                        {
+                                            "type": "message",
+                                            "text": response[i],
+                                            "contentType": "ivf_question" if i==0 else contentType,
+                                        }
+                                    )
+                                )
+                    elif data.get("isflow") == "confirm":
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response,
+                                    "contentType": "ivf_question",
+                                }
+                            )
+                        )
+
+
+                    elif isinstance(response, list):
                             for i in range(len(response)):
                                 print(response[i])
                                 if  isinstance(response[i], dict):
@@ -558,6 +588,33 @@ async def websocket_chat(websocket: WebSocket, token: str = Query(...)):
                                 }
                             )
                         )
+                elif (data.get("subtype") == "nearby_centers") or (
+                    flow_id == "nearby_centers"
+                ):
+                    response,contentType = await FindHospital(thread_id, flow_id, step_id, language, content)
+                    if isinstance(response,list) and contentType!="centers":
+                        for i in range(len(response)):
+                            print(response[i])
+                            await websocket.send_text(
+                                json.dumps(
+                                    {
+                                        "type": "message",
+                                        "text": response[i],
+                                        "contentType": contentType,
+                                    }
+                                )
+                            )
+                    else:
+                        await websocket.send_text(
+                            json.dumps(
+                                {
+                                    "type": "message",
+                                    "text": response,
+                                    "contentType": contentType,
+                                }
+                            )
+                        )
+
                 else:
                     continue
 

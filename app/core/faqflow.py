@@ -126,7 +126,7 @@ from app.utils.config import ENV_PROJECT
 
 async def FAQFlow(user_message: str, language: str,context=None):
     if not(context):
-        context= await query_vectorstore(user_message)
+        context= await query_vectorstore(user_message,language)
     messages = ["I understand your query, but is there any anything else you want to know",
             {"first_text":"For more specific information, please connect with our call center between 9 AM and 6 PM.","second_text":"CUSTOMER CARE NUMBER","phone_number":"1800 3092429"},
             "Hope this helps! You can come back anytime to explore  or get more info"
@@ -164,11 +164,12 @@ Strict Rule:
 Do not merge both. Return ONLY one of the two:
 1. Answer (based on context)
 2. Or the invalid message JSON
+3.This is important
 
 Question:
 {user_message}
 
-Answer (as JSON):
+Answer (as JSON or string):
 """
 
     answer = await bot_generate(prompt, 500)
@@ -186,8 +187,11 @@ Answer (as JSON):
 
 
 # Optional helper function
-async def query_vectorstore(query: str, k: int = 5):
+async def query_vectorstore(query: str,language:str, k: int = 5):
     vs = get_vectorstore()
+    if language!="English":
+        prompt=f"translate this question into english {query} output-string"
+        query=await bot_generate(prompt,100)
     embeddings = OpenAIEmbeddings(model="text-embedding-3-small",api_key=ENV_PROJECT.OPENAI_API_KEY)
     results = vs.similarity_search_by_vector(embedding=embeddings.embed_query(query),k=k)
     if not results:
