@@ -394,6 +394,24 @@ async def appointment_flow(
             otp_request = OtpVerify(otp_code=otp,contact_no=existing_user.phone_number, name=existing_user.name)
             result=await verify_otp_entry(otp_request, thread_id)
             print("result of otp verification", result)
+            if isinstance(result,str):
+                if "OTP expired" in result.get("message", ""):
+                    if existing_user.name:
+                        otp_request = OtpRequest(contact_no=existing_user.phone_number, name=existing_user.name)
+                    else:
+                        otp_request = OtpRequest(contact_no=existing_user.phone_number, name="Guest")
+                    otp = await create_or_update_otp_entry(otp_request, thread_id)
+                    await send_indira_otp(contact_no=existing_user.phone_number, otp_code=otp["otp_code"])
+                    if language=="English":
+                        return "Your Otp is Expired please enter the New OTP send on you Registered Movbile Number",None
+                    else:
+                        prompt=f"Yo have to just return 'Your Otp is Expired please enter the New OTP send on you Registered Movbile Number' in translated langauage-{language} Output:as Json and in same structure like the message which i have given"
+                        llm_answer = await ask_openai_validation_assistant(prompt)
+                        try:
+                            llm_json = json.loads(llm_answer)
+                        except:
+                            llm_json=[llm_answer]
+                        return llm_json,None
             if result and language=="English" and thread:
                 thread.flow_id = flow_id
                 thread.step_id = step["next_step"]
@@ -413,22 +431,35 @@ async def appointment_flow(
                     llm_json=[llm_answer]
                 return llm_json,None
             if not(result) and language=="English":
+                print("in maximum attempt thing")
                 if existing_user.name:
                     otp_request = OtpRequest(contact_no=existing_user.phone_number, name=existing_user.name)
                 else:
                     otp_request = OtpRequest(contact_no=existing_user.phone_number, name="Guest")
                 otp = await create_or_update_otp_entry(otp_request, thread_id)
-                await send_indira_otp(contact_no=existing_user.phone_number, otp_code=otp["otp_code"])
-                return step["other_text"], None
+                print(otp)
+                if otp.get("otp_code"):
+                    await send_indira_otp(contact_no=existing_user.phone_number, otp_code=otp["otp_code"])
+                    return step["other_text"], None
+                if "Maximum attempts reached" in otp.get("message", ""):
+                    print("returning message")
+                    return step["final_text"], None
             if not(result) and language!="English":
-                prompt=f"Yo have to just return {step['other_text']} in translated langauage-{language} Output:as Json and in same structure like the message which i have given"
-                llm_answer = await ask_openai_validation_assistant(prompt)
-                if existing_user.name:
-                    otp_request = OtpRequest(contact_no=existing_user.phone_number, name=existing_user.name)
-                else:
-                    otp_request = OtpRequest(contact_no=existing_user.phone_number, name="Guest")
                 otp = await create_or_update_otp_entry(otp_request, thread_id)
-                await send_indira_otp(contact_no=existing_user.phone_number, otp_code=otp["otp_code"])
+                if otp.get("otp_code"):
+                    await send_indira_otp(contact_no=existing_user.phone_number, otp_code=otp["otp_code"])
+                    prompt=f"Yo have to just return {step['other_text']} in translated langauage-{language} Output:as Json and in same structure like the message which i have given"
+                    llm_answer = await ask_openai_validation_assistant(prompt)
+                    if existing_user.name:
+                        otp_request = OtpRequest(contact_no=existing_user.phone_number, name=existing_user.name)
+                    else:
+                        otp_request = OtpRequest(contact_no=existing_user.phone_number, name="Guest")
+                if "Maximum attempts reached" in otp.get("message", ""):
+                    prompt=f"Yo have to just return {step['final_text']} in translated langauage-{language} Output:as Json and in same structure like the message which i have given"
+                    llm_answer = await ask_openai_validation_assistant(prompt)
+
+                # otp = await create_or_update_otp_entry(otp_request, thread_id)
+                # await send_indira_otp(contact_no=existing_user.phone_number, otp_code=otp["otp_code"])
                 try:
                     llm_json = json.loads(llm_answer)
                 except:

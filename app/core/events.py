@@ -7,7 +7,7 @@ from app.utils.config import ENV_PROJECT
 import asyncio
 from typing import Callable
 from app.core.kbSetUP import KBSetup
-
+# import certifi
 from app.models.threads import Thread
 from app.models.message import Message
 from app.models.users import User
@@ -24,7 +24,7 @@ def create_start_app_handler(app: FastAPI) -> Callable:
         try:
    
             print("DataBase URL",ENV_PROJECT.DATABASE_URL)
-            client = AsyncIOMotorClient(ENV_PROJECT.DATABASE_URL)
+            client = AsyncIOMotorClient(ENV_PROJECT.DATABASE_URL) #,tlsCAFile=certifi.where())
             database = client.get_database("indra_ivf")
             # Initialize Beanie with the database and models
             await init_beanie(database, document_models=[User, Thread, Message,User_Info,OtpVerification])

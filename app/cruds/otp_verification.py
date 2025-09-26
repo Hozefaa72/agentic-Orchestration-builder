@@ -17,7 +17,7 @@ def generate_otp():
 async def create_or_update_otp_entry(data, thread_id: str = None):
     try:
         now = utc_now()
-        valid_until = now + timedelta(minutes=2)
+        valid_until = now + timedelta(minutes=1)
         cooldown_until = now + timedelta(hours=1)
 
         existing = await OtpVerification.find_one(
@@ -42,9 +42,9 @@ async def create_or_update_otp_entry(data, thread_id: str = None):
                     existing.resend_cooldown_until
                     and now < existing.resend_cooldown_until
                 ):
-                    raise SQLError(
-                        message="Try later. Maximum attempts reached.", detail=otp_errors["RESEND_LIMIT_REACHED"]
-                    )
+                    return{
+                        "message":"Try later. Maximum attempts reached.", "detail":otp_errors["RESEND_LIMIT_REACHED"]
+                    }
                 existing.resend_attempts = 0
 
             existing.otp_code = generate_otp()
@@ -96,14 +96,14 @@ async def verify_otp_entry(data, thread_id: str = None):
             record_valid_until = record.valid_until
 
         if utc_now() > record_valid_until:
-            raise SQLError(message="OTP expired.", detail=otp_errors["EXPIRED_OTP"])
+            return{"message":"OTP expired.", "detail":otp_errors["EXPIRED_OTP"]}
 
         # Step 3: Mark as verified
         record.is_verified = True
         await record.save()
 
         # 🧠 IVF API call (separated)
-        await call_ivf_lead_creation_api(full_name=data.name or "Unknown", contact_no=data.contact_no)# raise error for 4xx or 5xx
+        # await call_ivf_lead_creation_api(full_name=data.name or "Unknown", contact_no=data.contact_no)# raise error for 4xx or 5xx
 
         # Step 6: Return success response
         response= record.to_json_dict()
