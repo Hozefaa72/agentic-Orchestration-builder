@@ -1,18 +1,14 @@
 from fastapi import FastAPI
-from app.api_configure import configure_app, configure_database
-# from app.database import init_db
-from contextlib import asynccontextmanager
-from app.routes.index import router
+from app.api_configure import configure_app, configure_database,configure_scheduler
+import os
 
-
-# @asynccontextmanager
-# async def lifespan(app: FastAPI):
-#     await init_db()
-#     yield
+os.environ["GRPC_VERBOSITY"] = "NONE"
+os.environ["GRPC_LOG_SEVERITY_LEVEL"] = "ERROR"
 
 configs = [
     configure_app,
-    configure_database
+    configure_database,
+    configure_scheduler
 ]
 
 app = FastAPI()

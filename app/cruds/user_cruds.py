@@ -1,225 +1,233 @@
 from fastapi import HTTPException
 from app.models.users import User
-from beanie.exceptions import DocumentNotFound
 from passlib.context import CryptContext
-from typing import Optional
 from bson import ObjectId
 import logging
-from pymongo.errors import PyMongoError
+import hashlib
+from app.schemas.user_schemas import UserSignup
+from app.cruds.role_cruds import get_role_id
+from app.models.orchestration_model import Orchestration
+from app.models.agents_model import Agents
+from app.models.steps_model import Steps
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 logger = logging.getLogger(__name__)
 
-async def hash_password(password: str) -> str:
+
+async def hash_password(password: str):
     try:
-        if not isinstance(password, str) or not password.strip():
-            raise HTTPException(status_code=422, detail="Invalid password input")
-
-        return pwd_context.hash(password)
-
-    except ValueError as ve:
-        logger.error(f"ValueError in hashing password: {ve}")
-        raise HTTPException(status_code=400, detail="Password value error")
-
+        print("before passwword hashing")
+        prehashed = hashlib.sha256(password.encode("utf-8")).hexdigest()
+        return pwd_context.hash(prehashed)
     except Exception as e:
-        logger.exception(f"Unexpected error during password hashing: {e}")
+        raise HTTPException(status_code=500, detail="Failed to securely hash password")
+
+
+async def verify_password(plain_password: str, hashed_password: str):
+    try:
+        prehashed = hashlib.sha256(plain_password.encode("utf-8")).hexdigest()
+        print("the hashed password is ", hashed_password)
+        print("The prehsahed password is ", prehashed)
+        print("Loaded password schemes:", pwd_context.schemes())
+
+        result = pwd_context.verify(prehashed, hashed_password)
+        print(result)
+        return result
+    except Exception as e:
         raise HTTPException(
-            status_code=500,
-            detail="Failed to securely hash password"
+            status_code=500, detail="Internal error during password check"
         )
 
 
-async def verify_password(plain_password: str, hashed_password: str) -> bool:
+async def create_user(user_data: UserSignup):
     try:
-        if not plain_password or not hashed_password:
-            raise HTTPException(status_code=422, detail="Password fields cannot be empty")
-
-        return pwd_context.verify(plain_password, hashed_password)
-
-    except ValueError as ve:
-        logger.error(f"ValueError in password verification: {ve}")
-        raise HTTPException(status_code=400, detail="Password verification failed")
-
-    except Exception as e:
-        logger.exception(f"Unexpected error during password verification: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="Internal error during password check"
-        )
-
-
-async def create_user(user_data) -> User:
-    try:
-        # Validate essential fields
-        if not user_data.name or not user_data.email or not user_data.password:
-            raise HTTPException(status_code=422, detail="Missing required fields")
-
         password_hash = await hash_password(user_data.password)
-
+        print("the hashed password id", password_hash)
+        role_id = await get_role_id(user_data.role_name.value)
         user = User(
             name=user_data.name,
             email=user_data.email,
             password_hash=password_hash,
-            signup_platform="web",
+            role_id=role_id,
         )
-
         await user.insert()
         return user
 
-    except PyMongoError as db_exc:
-        logger.error(f"Database error while creating user: {db_exc}")
-        raise HTTPException(
-            status_code=500,
-            detail="Database error during user creation"
-        )
-
-    except HTTPException as http_exc:
-        raise http_exc  # re-raise FastAPI's HTTPException cleanly
-
     except Exception as e:
-        logger.exception(f"Unexpected error in create_user: {e}")
-        raise HTTPException(
-            status_code=500,
-            detail="An unexpected error occurred during user creation"
-        )
-
-
-async def get_user_by_email(email: str) -> Optional[User]:
-    try:
-        print(email)
-        user = await User.find_one(User.email == email)
-        print(user)
-        return user
-    except DocumentNotFound:
-        logger.warning(f"User not found with email: {email}")
-        return None
-    except PyMongoError as e:
-        logger.error(f"Database error while retrieving user by email: {e}")
-        raise HTTPException(status_code=500, detail="Database error")
-    except Exception as e:
-        logger.error(f"Unexpected error in get_user_by_email: {e}")
         raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-async def get_user_by_id(user_id: str) -> Optional[User]:
+async def get_user_by_email(email: str):
+    try:
+        print(email)
+        print("before finding user")
+        user = await User.find_one(User.email == email)
+        print("after finding user")
+        print(user)
+        return user
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal Server Error")
+
+
+async def get_user_by_id(user_id: str):
     try:
         user_obj_id = ObjectId(user_id)
-        user = await User.find_one(User.email == user_obj_id)
+        user = await User.find_one(User.id == user_obj_id)
         return user
-    except DocumentNotFound:
-        return None
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Internal Server Error")
 
 
-async def verify_user_password(user: User, password: str) -> bool:
+async def verify_user_password(user: User, password: str):
     try:
-        if not user or not isinstance(user.password_hash, str):
-            raise HTTPException(status_code=400, detail="Invalid user data")
-
-        if not isinstance(password, str) or not password.strip():
-            raise HTTPException(status_code=422, detail="Invalid password input")
-
         return await verify_password(password, user.password_hash)
 
-    except ValueError as ve:
-        logger.error(f"ValueError during password verification: {ve}")
-        raise HTTPException(status_code=400, detail="Password verification error")
-
     except Exception as e:
-        logger.exception(f"Unexpected error in verify_user_password: {e}")
         raise HTTPException(
-            status_code=500,
-            detail="Internal error during password verification"
+            status_code=500, detail="Internal error during password verification"
         )
 
 
-# async def create_message(
-#     content: Union[str, List[str]],
-#     sender: str,
-#     thread_id: str,
-# ) -> Message:
-#     message = Message(
-#         content=content,
-#         role=sender,
-#         sender=sender,
-#         thread_id=thread_id,
-#         timestamp=datetime.utcnow(),
-#         feedback=-1,
-#     )
+async def add_agent_to_user_cruds(agent_id: str, user_id: str):
+    try:
+        user = await User.find_one(User.id == ObjectId(user_id))
+        print("the user is ", user)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        print("the user before adding agent is ", user)
+        if user.agent_id is None:
 
-#     await message.insert()
-#     return message
-
-
-# async def get_all_messages(thread_id: str) -> List:
-#     message_objs = (
-#         await Message.find(Message.thread_id == thread_id)
-#         .sort(Message.timestamp)
-#         .to_list()
-#     )
-
-#     formatted_messages = [
-#         {"role": msg.sender, "content": msg.content} for msg in message_objs
-#     ]
-
-#     return formatted_messages
+            user.agent_id = []
+        print("the agent id is ", agent_id)
+        user.agent_id.append(agent_id)
+        await user.save()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        )
 
 
-# async def get_thread_by_name(thread_id: str):
-#     try:
-#         thread_obj_id = ObjectId(thread_id)
-#     except Exception as e:
-#         print(f"Invalid ObjectId: {e}")
-#         return None
+async def add_orchestration_to_user_cruds(orch_id: str, user_id: str):
+    try:
+        user = await User.find_one(User.id == ObjectId(user_id))
+        print("the user is ", user)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        print("the user before adding agent is ", user)
+        if user.orchestration_id is None:
 
-#     thread = await Thread.find_one(Thread.id == thread_obj_id)
-
-#     if thread:
-#         print("thread_found")
-#         return thread.thread_name
-
-#     return None
-
-
-# async def update_thread_name(thread_id: str, name: str) -> bool:
-#     try:
-#         thread_obj_id = ObjectId(thread_id)
-#         thread = await Thread.find_one(Thread.id == thread_obj_id)
-
-#         if thread:
-#             thread.thread_name = name
-#             await thread.save()
-#             return True
-
-#         return False
-#     except Exception as e:
-#         print(f"Error updating thread name: {e}")
-#         return False
+            user.orchestration_id = []
+        print("the agent id is ", orch_id)
+        user.orchestration_id.append(orch_id)
+        await user.save()
+        print("after saving the orchestration in")
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        )
 
 
-# async def get_user_last_message(thread_id):
-#     message = (
-#         await Message.find(Message.thread_id == thread_id, Message.sender == "user")
-#         .sort("-timestamp")
-#         .first_or_none()
-#     )
+async def add_step_to_user_cruds(step_id: str, user_id: str):
+    try:
+        user = await User.find_one(User.id == ObjectId(user_id))
+        print("the user is ", user)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        print("the user before adding agent is ", user)
+        if user.step_id is None:
 
-#     if message is None:
-#         return "No message yet"
-
-#     return message.content
-
-# async def delete_thread(thread_id: str):
-#     thread = await Thread.get(PydanticObjectId(thread_id))
-    
-#     if thread:
-#         await Message.find(Message.thread_id == thread_id).delete()
-#         await thread.delete()
-        
-#         return {"message": "Thread and its messages deleted successfully"}
-    
-#     return {"message": "Thread not found"}
+            user.step_id = []
+        print("the agent id is ", step_id)
+        user.step_id.append(step_id)
+        await user.save()
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        )
 
 
-# async def update_thread_name_later(manager, thread_id, messages):
-#     chat_name = await manager.get_thread_name(messages)
-#     await update_thread_name(thread_id, chat_name)
+async def add_knowledgebase_to_user_cruds(kb_id: str, user_id: str):
+    try:
+        user = await User.find_one(User.id == ObjectId(user_id))
+        print("the user is ", user)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        print("the user before adding agent is ", user)
+        if user.knowledgebase_id is None:
+
+            user.knowledgebase_id = []
+        print("the agent id is ", kb_id)
+        user.knowledgebase_id.append(kb_id)
+        await user.save()
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        )
+
+
+async def get_user_role_id_cruds(user_id: str):
+    try:
+        user = await User.find_one(User.id == ObjectId(user_id))
+        print(user)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        return user.role_id
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        )
+
+
+async def same_orchestration_already_present(orch_name, user_id):
+    try:
+        user = await User.find_one(User.id == ObjectId(user_id))
+        for orch in user.orchestration_id:
+            orch_model = await Orchestration.find_one(
+                Orchestration.id == ObjectId(orch)
+            )
+            if orch_model and orch_model.orchestrationName == orch_name:
+                return True
+
+        return False
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        )
+
+
+async def same_agent_already_present(agent_name, user_id):
+    try:
+        user = await User.find_one(User.id == ObjectId(user_id))
+        for agent in user.agent_id:
+            agent_model = await Agents.find_one(Agents.id == ObjectId(agent))
+            if agent_model.agentName == agent_name:
+                return True
+        return False
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        )
+
+
+async def same_step_already_present(step_name, user_id):
+    try:
+        user = await User.find_one(User.id == ObjectId(user_id))
+        for step in user.step_id:
+            step_model = await Steps.find_one(Steps.id == ObjectId(step))
+            if step_model.StepName == step_name:
+                return True
+        return False
+    except Exception as e:
+        raise HTTPException(
+            status_code=500,
+            detail="Internal server error",
+        )
